@@ -106,13 +106,3 @@ class CP850Control(CinemaProcessor.CinemaProcessor):
         else:
             return False
 
-
-# cp = CP850Control("10.130.53.210")
-# cp.connect()
-# while cp.getState() != 'connected':
-#     print('Check connection')
-#     time.sleep(1)        cp.connect()
-# while (True):
-#     print(cp.displayfader())
-#     time.sleep(1)
-

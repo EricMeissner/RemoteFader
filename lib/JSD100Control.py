@@ -11,4 +11,4 @@ PORT = 10001
 class JSD100Control(JSD60Control.JSD60Control):
     def __init__(self, host):
         super().__init__(host)
-        API_PREFIX='jsd100'
+        self.API_PREFIX='jsd100'

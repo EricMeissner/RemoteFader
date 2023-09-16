@@ -1,25 +1,26 @@
-import math
+import os
+import displayio
+import terminalio
+import adafruit_displayio_ssd1306
+from adafruit_display_text import label
+import digitalio
+import rotaryio
 import time
+import math
+import board
+import busio
+#from enum import Enum
+
+# Network stuff
+from adafruit_wiznet5k.adafruit_wiznet5k import WIZNET5K
+import adafruit_wiznet5k.adafruit_wiznet5k_socket as socket
 
 import CP650Control
 import CP750Control
 import CP850Control
-import JSD100Control
 import JSD60Control
-import adafruit_displayio_ssd1306
-import adafruit_wiznet5k.adafruit_wiznet5k_socket as socket
-import busio
-import digitalio
-import displayio
-import rotaryio
-import terminalio
-from adafruit_display_text import label
-# Network stuff
-from adafruit_wiznet5k.adafruit_wiznet5k import WIZNET5K
-
+import JSD100Control
 import Config
-
-# from enum import Enum
 
 #class ProgramState(Enum):
 #    LOADING = 0

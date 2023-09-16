@@ -14,18 +14,19 @@ ERROR_PREFIX='⚠'
 SOCKET_TIMEOUT=250
 
 PORT = 10001
-API_PREFIX='jsd60'
+
 
 class JSD60Control(CinemaProcessor.CinemaProcessor):
     def __init__(self, host):
         super().__init__(host, PORT)
+        self.API_PREFIX='jsd60'
 
     def getState(self):
         if self.socket is None:
             return "disconnected"
         else:
             # Test if socket is alive...
-            result = self.send(f'{API_PREFIX}.sys.fader')
+            result = self.send(f'{self.API_PREFIX}.sys.fader')
             if not result or result.startswith(ERROR_PREFIX):
                 self.disconnect()
                 return result
@@ -93,18 +94,18 @@ class JSD60Control(CinemaProcessor.CinemaProcessor):
             return False
 
     def getfader(self):
-        returnFader = self.send(f'{API_PREFIX}.sys.fader')
+        returnFader = self.send(f'{self.API_PREFIX}.sys.fader')
         # ~ print(returnFader)
         return self.stripvalue(returnFader)
 
     def setfader(self, value):
-        return self.stripvalue(self.send(f'{API_PREFIX}.sys.fader\t{value}'))
+        return self.stripvalue(self.send(f'{self.API_PREFIX}.sys.fader\t{value}'))
 
     def setmute(self, mute=1):
-        return self.stripvalue(self.send(f'{API_PREFIX}.sys.fader\t{value}'))
+        return self.stripvalue(self.send(f'{self.API_PREFIX}.sys.fader\t{value}'))
 
     def getmute(self):
-        return self.stripvalue(self.send(f'{API_PREFIX}.sys.mute'))
+        return self.stripvalue(self.send(f'{self.API_PREFIX}.sys.mute'))
 
     def displayfader(self):
         fader = self.getfader()
