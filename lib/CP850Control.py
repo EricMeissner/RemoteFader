@@ -71,6 +71,14 @@ class CP850Control(CinemaProcessor.CinemaProcessor):
 #     def stripvalue(self, responseText):
 #         see CinemaProcessor
 
+    # Adds or subtracts an integer to the fader
+    def addfader(self, value=1):
+        if(isinstance(value, int)):
+            if(value>=0):
+                self.send(f'ctrl.fader_delta +{value}')
+            else:
+                self.send(f'ctrl.fader_delta {value}')
+
     def getfader(self):
         returnFader = self.send('sys.fader ?')
         # ~ print(returnFader)
@@ -97,4 +105,14 @@ class CP850Control(CinemaProcessor.CinemaProcessor):
             return f' {str(formattedfader)}'
         else:
             return False
+
+
+# cp = CP850Control("10.130.53.210")
+# cp.connect()
+# while cp.getState() != 'connected':
+#     print('Check connection')
+#     time.sleep(1)        cp.connect()
+# while (True):
+#     print(cp.displayfader())
+#     time.sleep(1)
 

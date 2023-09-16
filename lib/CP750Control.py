@@ -72,12 +72,12 @@ class CP750Control(CinemaProcessor.CinemaProcessor):
 #         see CinemaProcessor
 
     # Adds or subtracts an integer to the fader
-    # ~ def addfader(self, value=1):
-        # ~ if(isinstance(value, int)):
-            # ~ if(value>=0):
-                # ~ self.send(f'cp750.ctrl.fader_delta +{value}')
-            # ~ else:
-                # ~ self.send(f'cp750.ctrl.fader_delta {value}')
+    def addfader(self, value=1):
+        if(isinstance(value, int)):
+            if(value>=0):
+                self.send(f'cp750.ctrl.fader_delta +{value}')
+            else:
+                self.send(f'cp750.ctrl.fader_delta {value}')
 
     def getfader(self):
         returnFader = self.send('cp750.sys.fader ?')
