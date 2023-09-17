@@ -20,6 +20,8 @@ import CP750Control
 import CP850Control
 import JSD60Control
 import JSD100Control
+import AP20Control
+
 import Config
 
 #class ProgramState(Enum):
@@ -31,6 +33,7 @@ import Config
 #    EDIT_OWNIP = 5
 #    CONFIRM_CHANGE = 6
 
+
 # Types of Cinema Processors supported.
 #class CPTypeCode(Enum):
 #    CP650 = 0
@@ -38,7 +41,8 @@ import Config
 #    CP850/950 = 2
 #    JSD60 = 3
 #    JSD100 = 4
-CPCOUNT = 5
+#    AP20/25 = 5
+CPCOUNT = 6
 
 # I2C pins
 SDA = Config.SDA
@@ -299,6 +303,8 @@ def refreshDisplay():
             label_1_text = f'CP Type: JSD60'
         elif(cpType==4):
             label_1_text = f'CP Type: JSD100'
+        elif(cpType==5):
+            label_1_text = f'CP Type: AP20/25'
         else:
             label_1_text = f'CP Type: Unknown'
         label_2_text = f'CPIP:{cpIP}'
@@ -315,7 +321,7 @@ def refreshDisplay():
             dropped_requests += 1
             faderDisplay_text = faderDisplay.text
     elif(pState in (3,4,5,6)):
-        header_text = 'Edit Setup'
+        header_text = 'Edit Setup v1.3.1'
         if(pState == 3):
             label_1_text = 'CP Type: >'
         else:
@@ -330,6 +336,8 @@ def refreshDisplay():
             label_1_text += 'JSD60'
         elif(new_cpType==4):
             label_1_text += 'JSD100'
+        elif(new_cpType==5):
+            label_1_text += 'AP20/25'
         else:
             label_1_text += 'Unknown'
         label_2_text = 'CPIP:'
@@ -346,7 +354,6 @@ def refreshDisplay():
             label_3_text += str(new_ownIP[i])
             if(i!=3):
                 label_3_text += '.'
-
 
         if(pState == 6):
             header_text = 'Confirm? '
@@ -383,6 +390,8 @@ def constructCinemaProcessorObject():
         cp = JSD60Control.JSD60Control(cpIP)
     elif(cpType==4):
         cp = JSD100Control.JSD100Control(cpIP)
+    elif(cpType==5):
+        cp = AP20Control.AP20Control(cpIP)
     else:
         print("Error: invalid CP type")
 
