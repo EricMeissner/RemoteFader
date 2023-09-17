@@ -433,7 +433,8 @@ def main():
         lastPosition = currentPosition
         volumeChange = math.floor(poitionChanges*SENSITIVITY)
         #print(position)
-        cp.addfader(volumeChange)
+        if (volumeChange != 0):
+            cp.addfader(volumeChange)
 
         #Update the display with the current value
         refreshDisplay()
