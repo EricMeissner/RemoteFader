@@ -25,7 +25,7 @@ import DCPControl
 
 import Config
 
-VERSION = "1.3.2"
+VERSION = "1.3.3"
 
 #class ProgramState(Enum):
 #    LOADING = 0
@@ -76,8 +76,7 @@ W5500_RSTn = Config.W5500_RSTn
 # Encoder Sensitivity
 SENSITIVITY = Config.SENSITIVITY
 
-# Polling rate
-delay=Config.POLLING_DELAY
+
 
 DEVICE_ADDRESS = Config.DEVICE_ADDRESS
 
@@ -355,11 +354,13 @@ def refreshDisplay():
     faderDisplay.text = faderDisplay_text
 
 def constructCinemaProcessorObject():
-    global cp
+    global cp, delay
     if(cp is not None):
         if(cp.getState() == "connected"):
             cp.disconnect()
         cp = None
+    # Polling rate
+    delay=Config.POLLING_DELAY
     if(cpType==0):
         cp = CP650Control.CP650Control(cpIP)
     elif(cpType==1):
@@ -373,9 +374,10 @@ def constructCinemaProcessorObject():
     elif(cpType==5):
         cp = AP20Control.AP20Control(cpIP)
     elif(cpType==6):
-        cp = DCPControl.DCPControl(cpIP, "dcp100")
+        #delay = 1
+        cp = DCPControl.DCPControl(cpIP, "dcp300")
     elif(cpType==7):
-        cp = DCPControl.DCPControl(cpIP, "dcp200")
+        cp = DCPControl.DCPControl(cpIP, "dcp300")
     elif(cpType==8):
         cp = DCPControl.DCPControl(cpIP, "dcp300")
     elif(cpType==9):
@@ -410,13 +412,13 @@ def getCPTypeFromCode(code):
     elif(code==5):
         return  'AP20/24/25'
     elif(code==6):
-        return  'DCP100'
+        return  'DCP100?'
     elif(code==7):
-        return  'DCP200'
+        return  'DCP200?'
     elif(code==8):
-        return  'DCP300'
+        return  'DCP300?'
     elif(code==9):
-        return  'DMP100???'
+        return  'DMP100?'
     else:
         return 'UNKNOWN'
 

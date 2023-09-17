@@ -1,14 +1,10 @@
 #!/usr/bin/env python3
 #This class deals with communicating with the AP20 and AP25
 
-import board
-import busio
-import digitalio
 from adafruit_wiznet5k.adafruit_wiznet5k import WIZNET5K
 import adafruit_wiznet5k.adafruit_wiznet5k_socket as socket
 import CinemaProcessor
-import time
-import Config
+#import time
 
 ERROR_PREFIX='⚠'
 SOCKET_TIMEOUT=250

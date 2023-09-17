@@ -1,4 +1,3 @@
-#import socket
 #from abc import ABC, abstractmethod
 
 class CinemaProcessor(object):
