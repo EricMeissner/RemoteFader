@@ -21,8 +21,11 @@ import CP850Control
 import JSD60Control
 import JSD100Control
 import AP20Control
+import DCPControl
 
 import Config
+
+VERSION = "1.3.2"
 
 #class ProgramState(Enum):
 #    LOADING = 0
@@ -41,8 +44,12 @@ import Config
 #    CP850/950 = 2
 #    JSD60 = 3
 #    JSD100 = 4
-#    AP20/25 = 5
-CPCOUNT = 6
+#    AP20/24/25 = 5
+#    DCP100 = 6
+#    DCP200 = 7
+#    DCP300 = 8
+#    DPM100 = 9
+CPCOUNT = 10
 
 # I2C pins
 SDA = Config.SDA
@@ -293,25 +300,12 @@ def refreshDisplay():
         header_text = "Loading..."
     elif(pState == 1):
         header_text = "Connecting..."
-        if(cpType==0):
-            label_1_text = f'CP Type: CP650'
-        elif(cpType==1):
-            label_1_text = f'CP Type: CP750'
-        elif(cpType==2):
-            label_1_text = f'CP Type: CP850/950'
-        elif(cpType==3):
-            label_1_text = f'CP Type: JSD60'
-        elif(cpType==4):
-            label_1_text = f'CP Type: JSD100'
-        elif(cpType==5):
-            label_1_text = f'CP Type: AP20/25'
-        else:
-            label_1_text = f'CP Type: Unknown'
+        label_1_text = f'CP Type: {getCPTypeFromCode(cpType)}'
         label_2_text = f'CPIP:{cpIP}'
         label_3_text = f'FIP: {eth.pretty_ip(eth.ip_address)}'
         #label_4_text = "test line"
     elif(pState == 2):
-        header_text = 'Connected'
+        header_text = f'Connected-{getCPTypeFromCode(cpType)}'
         fader = cp.displayfader()
         if(fader):
             dropped_requests = 0
@@ -321,25 +315,11 @@ def refreshDisplay():
             dropped_requests += 1
             faderDisplay_text = faderDisplay.text
     elif(pState in (3,4,5,6)):
-        header_text = 'Edit Setup v1.3.1'
+        header_text = f'Edit Setup v{VERSION}'
         if(pState == 3):
-            label_1_text = 'CP Type: >'
+            label_1_text = f'CP Type: >{getCPTypeFromCode(new_cpType)}'
         else:
-            label_1_text = 'CP Type: '
-        if(new_cpType==0):
-            label_1_text += 'CP650'
-        elif(new_cpType==1):
-            label_1_text += 'CP750'
-        elif(new_cpType==2):
-            label_1_text += 'CP850/950'
-        elif(new_cpType==3):
-            label_1_text += 'JSD60'
-        elif(new_cpType==4):
-            label_1_text += 'JSD100'
-        elif(new_cpType==5):
-            label_1_text += 'AP20/25'
-        else:
-            label_1_text += 'Unknown'
+            label_1_text = f'CP Type: {getCPTypeFromCode(new_cpType)}'
         label_2_text = 'CPIP:'
         for i in range(4):
             if(pState==4 and currentOctet == i):
@@ -392,6 +372,14 @@ def constructCinemaProcessorObject():
         cp = JSD100Control.JSD100Control(cpIP)
     elif(cpType==5):
         cp = AP20Control.AP20Control(cpIP)
+    elif(cpType==6):
+        cp = DCPControl.DCPControl(cpIP, "dcp100")
+    elif(cpType==7):
+        cp = DCPControl.DCPControl(cpIP, "dcp200")
+    elif(cpType==8):
+        cp = DCPControl.DCPControl(cpIP, "dcp300")
+    elif(cpType==9):
+        cp = DCPControl.DCPControl(cpIP, "dpm100")
     else:
         print("Error: invalid CP type")
 
@@ -407,6 +395,30 @@ def setUpCinemaProcessor():
         cp.connect()
     pState = 2
     refreshDisplay()
+
+def getCPTypeFromCode(code):
+    if(code==0):
+        return 'CP650'
+    elif(code==1):
+        return  'CP750'
+    elif(code==2):
+        return  'CP850/950'
+    elif(code==3):
+        return  'JSD60'
+    elif(code==4):
+        return  'JSD100'
+    elif(code==5):
+        return  'AP20/24/25'
+    elif(code==6):
+        return  'DCP100'
+    elif(code==7):
+        return  'DCP200'
+    elif(code==8):
+        return  'DCP300'
+    elif(code==9):
+        return  'DMP100???'
+    else:
+        return 'UNKNOWN'
 
 def main():
     global cp, pState, enc, encbtn

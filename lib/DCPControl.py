@@ -1,5 +1,4 @@
-#!/usr/bin/env python3
-#This class deals with communicating with the CP850 and CP950
+#Deals with communicating with the DCP line from QSC.
 
 import board
 import busio
@@ -13,19 +12,20 @@ import time
 ERROR_PREFIX='⚠'
 SOCKET_TIMEOUT=250
 
-# Dolby defined port.
-PORT = 61408
+PORT = 4446
 
-class CP850Control(CinemaProcessor.CinemaProcessor):
-    def __init__(self, host):
+class DCPControl(CinemaProcessor.CinemaProcessor):
+    def __init__(self, host, prefix):
         super().__init__(host, PORT)
+        self.prefix = prefix
+        #Prefixes include: "dcp100", "dcp200", "dcp300", and possibly "dpm100"
 
     def getState(self):
         if self.socket is None:
             return "disconnected"
         else:
             # Test if socket is alive...
-            result = self.send('sys.fader ?')
+            result = self.send(f'{prefix}fader=')
             if not result or result.startswith(ERROR_PREFIX):
                 self.disconnect()
                 return result
@@ -67,42 +67,41 @@ class CP850Control(CinemaProcessor.CinemaProcessor):
         except Exception as e:
             return "Error: " + str(e)
 
-    # Extracts the actual value from the response from the CP850/CP950
-#     def stripvalue(self, responseText):
-#         see CinemaProcessor
+    # Extracts the actual value from the response. Does not convert to number!
+    def stripvalue(self, responseText):
+        value = responseText.strip().split("=")[-1]
+        return value
 
     # Adds or subtracts an integer to the fader
+    # To match previous implementations, the integer is essentially divided by 10, so that 1 tic changes by 0.1dB
     def addfader(self, value=1):
-        if(isinstance(value, int)):
-            if(value>=0):
-                self.send(f'ctrl.fader_delta +{value}')
-            else:
-                self.send(f'ctrl.fader_delta {value}')
+        strValue = str(value)
+        formattedValue = strValue[:-1]+'.'+strValue[-1:] #add decimal point one space over from the right
+        if(value>=0):
+            self.send(f'{prefix}fader=++{formattedValue}')
+        else:
+            self.send(f'{prefix}fader=-{formattedValue}')
 
+    #Warning: Return
     def getfader(self):
-        returnFader = self.send('sys.fader ?')
-        # ~ print(returnFader)
-        return self.stripvalue(returnFader)
+        returnFader = self.send(f'{prefix}fader=')
+        return  self.stripvalue(returnFader)
 
+    #Warning: Returns strings
     def setfader(self, value):
-        return self.stripvalue(self.send(f'sys.fader {value}'))
+        return  self.stripvalue(self.send(f'{prefix}fader={value}'))
 
     def setmute(self, mute=1):
-        return self.stripvalue(self.send(f'sys.mute {mute}'))
+        return  self.stripvalue(self.send(f'{prefix}mute={mute}'))
 
     def getmute(self):
-        return self.stripvalue(self.send('sys.mute ?'))
-
-    def getversion(self):
-        return self.stripvalue(self.send('sysinfo.version ?'))
-
+        return  self.stripvalue(self.send(f'{prefix}mute='))
 
     def displayfader(self):
         fader = self.getfader()
-        if(isinstance(fader, int)):
-            rawfader = str(fader)
-            formattedfader = rawfader[:-1]+'.'+rawfader[-1:] #add decimal point one space over from the right
-            return f' {str(formattedfader)}'
-        else:
-            return False
+        try:
+            float(fader) #checks to see if the getfader result is a number, rather than an error message
+            return  ' {fader}'
+        except ValueError: #If getfader returns an error rather than a number, we this type error triggers to return False.
+            return  False
 
