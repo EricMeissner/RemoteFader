@@ -9,6 +9,8 @@ import time
 import math
 import board
 import busio
+import keypad
+
 #from enum import Enum
 
 # Network stuff
@@ -25,7 +27,7 @@ import DCPControl
 
 import Config
 
-VERSION = "1.3.3"
+VERSION = "1.3.4"
 
 #class ProgramState(Enum):
 #    LOADING = 0
@@ -92,6 +94,10 @@ new_ownIP = None
 
 dropped_requests = 0
 MAXDROPS = 10
+if hasattr(Config, 'KEYPAD_EXISTS'):
+    KEYPAD_EXISTS = Config.KEYPAD_EXISTS
+else:
+    KEYPAD_EXISTS = False
 # Extract saved data from data.txt
 def getData():
     global ownIP, cpIP, cpType
@@ -265,6 +271,9 @@ def setUpDisplay():
     faderDisplay = label.Label(
         terminalio.FONT, text="", color=0xFFFFFF, x=5, y=36, scale=5
     )
+    if(KEYPAD_EXISTS):
+        faderDisplay.scale = 4
+        faderDisplay.y = 28
     group.append(header)
     group.append(label_1)
     group.append(label_2)
@@ -302,7 +311,6 @@ def refreshDisplay():
         label_1_text = f'CP Type: {getCPTypeFromCode(cpType)}'
         label_2_text = f'CPIP:{cpIP}'
         label_3_text = f'FIP: {eth.pretty_ip(eth.ip_address)}'
-        #label_4_text = "test line"
     elif(pState == 2):
         header_text = f'Connected-{getCPTypeFromCode(cpType)}'
         fader = cp.displayfader()
@@ -313,6 +321,8 @@ def refreshDisplay():
             # If there is a bad response, keep the old fader text.
             dropped_requests += 1
             faderDisplay_text = faderDisplay.text
+        if(KEYPAD_EXISTS):
+            label_4_text = cp.getmacroname()
     elif(pState in (3,4,5,6)):
         header_text = f'Edit Setup v{VERSION}'
         if(pState == 3):
@@ -375,9 +385,9 @@ def constructCinemaProcessorObject():
         cp = AP20Control.AP20Control(cpIP)
     elif(cpType==6):
         #delay = 1
-        cp = DCPControl.DCPControl(cpIP, "dcp300")
+        cp = DCPControl.DCPControl(cpIP, "dcp100")
     elif(cpType==7):
-        cp = DCPControl.DCPControl(cpIP, "dcp300")
+        cp = DCPControl.DCPControl(cpIP, "dcp200")
     elif(cpType==8):
         cp = DCPControl.DCPControl(cpIP, "dcp300")
     elif(cpType==9):
@@ -429,7 +439,9 @@ def main():
     setUpDisplay()
     # Load settings from data.txt
     getData()
-
+    if KEYPAD_EXISTS:
+        km = keypad.KeyMatrix(row_pins=Config.ROW_PINS, column_pins=Config.COLUMN_PINS)
+        KEYS = Config.KEYS
     encbtn = digitalio.DigitalInOut(ENCODER_BUTTON)
     encbtn.direction = digitalio.Direction.INPUT
     encbtn.pull = digitalio.Pull.UP
@@ -447,7 +459,12 @@ def main():
             enc.position = 0
             lastPosition = 0
             setUpCinemaProcessor()
-
+        if KEYPAD_EXISTS:
+            event = km.events.get()
+            if event:
+                newmacro = Config.KEYS[event.key_number]
+                if event.pressed and newmacro.isdigit():
+                    cp.setmacro(newmacro)
         # If the position of the encoder changed, add/subtract it from the fader (modified by sensitivity)
         # Then adjust the position tracking value accordingly (used to be set back to zero, but
         # the sensitivity value would risk dropping half-ticks and the like.

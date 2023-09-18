@@ -56,9 +56,9 @@ class DCPControl(CinemaProcessor.CinemaProcessor):
         if self.socket is None:
             return self.getState()
         try:
-            self.socket.send(command.encode('UTF-8') + b"\r\n")
-            result = self.socket.recv().decode('UTF-8').strip()
-            print(result)
+            self.socket.send(command.encode('UTF-8') + b"\r")
+            result = self.socket.recv().decode('UTF-8')
+            print("response: " + result)
             self.socket.disconnect()
             return result
         except Exception as e:

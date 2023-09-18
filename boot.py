@@ -7,15 +7,6 @@ import board
 import digitalio
 import storage
 
-# For Gemma M0, Trinket M0, Metro M0/M4 Express, ItsyBitsy M0/M4 Express
-# switch = digitalio.DigitalInOut(board.D2)
-
-# For Feather M0/M4 Express
-# switch = digitalio.DigitalInOut(board.D5)
-
-# For Circuit Playground Express, Circuit Playground Bluefruit
-# switch = digitalio.DigitalInOut(board.D7)
-
 # For my Pico
 switch = digitalio.DigitalInOut(board.GP5)
 

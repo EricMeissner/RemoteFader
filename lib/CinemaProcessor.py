@@ -27,7 +27,7 @@ class CinemaProcessor(object):
     # If it's an number, it's cast as an integer first.
     # Return True if both values are numbers, False if there was an issue (like a timeout)
     def stripvalue(self, responseText):
-        value = responseText.strip().split(" ")[-1]
+        value = " ".join(responseText.strip().split(" ")[1:])
         if (value.isdigit()):
             return int(value)
         else:
@@ -66,3 +66,12 @@ class CinemaProcessor(object):
     #@abstractmethod
     def displayfader(self):
         pass
+
+    def setmacro(self, macro):
+        pass
+
+    def getmacro(self):
+        return -1
+
+    def getmacroname(self):
+        return "Not implemented"

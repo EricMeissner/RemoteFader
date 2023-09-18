@@ -14,7 +14,7 @@ DNS_SERVER = (8, 8, 8, 8)
 # Polling/update delay in seconds
 # A lower delay will make the the fader more responsive, BUT if it is too low
 # the frequent requests to the Cinema Processor can be rejected, causing buggy responses.
-POLLING_DELAY = 0.3
+POLLING_DELAY = 0.5
 
 # Encoder Sensitivity
 # We had an encoder that incremented twice for one click, so we added this so we could
@@ -47,8 +47,16 @@ DEVICE_ADDRESS = 0x3c
 DISPLAYWIDTH = 128
 DISPLAYHEIGHT = 64
 
-# Ports for Cinema Processors
-# These shouldn't ever need to change
-# DOLBYPORT = 61408       # port for Dolby CP_50 Cinema Processors
-# CP650PORT = 61412
-# JSDPORT = 10001         # port for JSD Cinema Processors
+# Key Matrix config
+# This is for implementations with macro buttons.
+KEYPAD_EXISTS = True
+
+ROW_PINS = (board.GP6, board.GP7, board.GP8, board.GP9)
+COLUMN_PINS = (board.GP10, board.GP11, board.GP12, board.GP13)
+
+KEYS = (
+    "1", "2", "3", "A",
+    "4", "5", "6", "B",
+    "7", "8", "9", "C",
+    "*", "0", "#", "D"
+)
