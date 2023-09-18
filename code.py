@@ -28,7 +28,7 @@ import DCPControl
 
 import Config
 
-VERSION = "1.5.1"
+VERSION = "1.5.2"
 
 #class ProgramState(Enum):
 #    LOADING = 0
@@ -311,15 +311,15 @@ def editIP():
         new_ownIP[currentOctet] = math.floor(enc.position*SENSITIVITY) % 255
         refreshDisplay()
     currentOctet += 1
-    if(KEYPAD_EXISTS):
-        pState = 8
-        enc.position = int(new_formatEnable/SENSITIVITY)
+
+    pState = 8
+    enc.position = int(new_formatEnable/SENSITIVITY)
+    refreshDisplay()
+    while(not encbtn.value):
+        pass
+    while(encbtn.value):
+        new_formatEnable = math.floor(enc.position*SENSITIVITY) % 2
         refreshDisplay()
-        while(not encbtn.value):
-            pass
-        while(encbtn.value):
-            new_formatEnable = math.floor(enc.position*SENSITIVITY) % 2
-            refreshDisplay()
     pState = 6
     enc.position = 0
     refreshDisplay()
