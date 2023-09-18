@@ -28,7 +28,7 @@ import DCPControl
 
 import Config
 
-VERSION = "1.5.2"
+VERSION = "1.5.3"
 
 #class ProgramState(Enum):
 #    LOADING = 0
@@ -716,12 +716,12 @@ def main():
                 if event.pressed:
                     print(keyPressed)
                     if formatEnable:
+                        #print(formatEnable)
                         if keyPressed.isdigit():
                             cp.setmacro(keyPressed)
                         elif (keyPressed == FORMAT_KEY and len(macrolist) and macroChangeImplemented(cpType)):
                             changeMacro()
-                    if MUTE_KEY:
-                        if keyPressed == MUTE_KEY:
+                        elif keyPressed == MUTE_KEY:
                             cp.setmute(1)
                         elif keyPressed == UNMUTE_KEY:
                             cp.setmute(0)
