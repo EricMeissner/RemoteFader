@@ -27,7 +27,7 @@ import DCPControl
 
 import Config
 
-VERSION = "1.3.5"
+VERSION = "1.4.0"
 
 #class ProgramState(Enum):
 #    LOADING = 0
@@ -48,11 +48,9 @@ VERSION = "1.3.5"
 #    JSD60 = 3
 #    JSD100 = 4
 #    AP20/24/25 = 5
-#    DCP100 = 6
-#    DCP200 = 7
-#    DCP300 = 8
-#    DPM100 = 9
-CPCOUNT = 10
+#    DCP100-300 = 6
+
+CPCOUNT = 7
 
 # I2C pins
 SDA = Config.SDA
@@ -78,8 +76,6 @@ W5500_RSTn = Config.W5500_RSTn
 
 # Encoder Sensitivity
 SENSITIVITY = Config.SENSITIVITY
-
-
 
 DEVICE_ADDRESS = Config.DEVICE_ADDRESS
 
@@ -113,6 +109,8 @@ def getData():
             #TODO: Basic validation
             if x.startswith('cpType:'):
                 cpType = int(x.split()[1])
+                if (cpType >= CPCOUNT):
+                    cpType = 0
             elif x.startswith('cpIP:'):
                 cpIP = x.split()[1]
             elif x.startswith('ownIP:'):
@@ -272,9 +270,9 @@ def setUpDisplay():
     faderDisplay = label.Label(
         terminalio.FONT, text="", color=0xFFFFFF, x=5, y=36, scale=5
     )
-    if(KEYPAD_EXISTS):
-        faderDisplay.scale = 4
-        faderDisplay.y = 28
+    #if(KEYPAD_EXISTS):
+    #    faderDisplay.scale = 4
+    #    faderDisplay.y = 28
     group.append(header)
     group.append(label_1)
     group.append(label_2)
@@ -323,10 +321,17 @@ def refreshDisplay():
             dropped_requests += 1
             faderDisplay_text = faderDisplay.text
         if(KEYPAD_EXISTS):
-            if(pState == 2):
-                label_4_text = cp.getmacroname()
-            elif(pState == 7):
-                label_4_text = f'M> {macrolist[newMacroIndex]}'
+            macroname = cp.getmacroname() #getmacroname returns False for CPs where this functionality is not yet supported
+            if(macroname != False):
+                faderDisplay.scale = 4
+                faderDisplay.y = 28
+                if(pState == 2):
+                    label_4_text = macroname
+                elif(pState == 7):
+                    label_4_text = f'M> {macrolist[newMacroIndex]}'
+            else:
+                faderDisplay.scale = 5
+                faderDisplay.y = 36
     elif(pState in (3,4,5,6)):
         header_text = f'Edit Setup v{VERSION}'
         if(pState == 3):
@@ -388,14 +393,7 @@ def constructCinemaProcessorObject():
     elif(cpType==5):
         cp = AP20Control.AP20Control(cpIP)
     elif(cpType==6):
-        #delay = 1
-        cp = DCPControl.DCPControl(cpIP, "dcp100")
-    elif(cpType==7):
-        cp = DCPControl.DCPControl(cpIP, "dcp200")
-    elif(cpType==8):
-        cp = DCPControl.DCPControl(cpIP, "dcp300")
-    elif(cpType==9):
-        cp = DCPControl.DCPControl(cpIP, "dpm100")
+        cp = DCPControl.DCPControl(cpIP)
     else:
         print("Error: invalid CP type")
 
@@ -427,13 +425,7 @@ def getCPTypeFromCode(code):
     elif(code==5):
         return  'AP20/24/25'
     elif(code==6):
-        return  'DCP100?'
-    elif(code==7):
-        return  'DCP200?'
-    elif(code==8):
-        return  'DCP300?'
-    elif(code==9):
-        return  'DMP100?'
+        return  'DCP100-300'
     else:
         return 'UNKNOWN'
 
@@ -494,7 +486,7 @@ def main():
                 if event.pressed:
                     if keyPressed.isdigit():
                         cp.setmacro(keyPressed)
-                    elif (keyPressed == 'A'):
+                    elif (keyPressed == 'A' and len(macrolist)):
                         changeMacro()
                 event = km.events.get()
         # If the position of the encoder changed, add/subtract it from the fader (modified by sensitivity)
@@ -506,8 +498,9 @@ def main():
         volumeChange = math.floor(poitionChanges*SENSITIVITY)
         #print(position)
         if (volumeChange != 0):
+            time.sleep(0.1)
             cp.addfader(volumeChange)
-
+            time.sleep(0.1)
         #Update the display with the current value
         refreshDisplay()
         time.sleep(delay)

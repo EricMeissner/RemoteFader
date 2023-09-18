@@ -74,4 +74,7 @@ class CinemaProcessor(object):
         return -1
 
     def getmacroname(self):
-        return "Not implemented"
+        return False
+
+    def getmacrolist(self):
+        return []
