@@ -98,7 +98,7 @@ class CP850Control(CinemaProcessor.CinemaProcessor):
         if(isinstance(fader, int)):
             rawfader = str(fader)
             formattedfader = rawfader[:-1]+'.'+rawfader[-1:] #add decimal point one space over from the right
-            return f' {str(formattedfader)}'
+            return f'{str(formattedfader)}'
         else:
             return False
 

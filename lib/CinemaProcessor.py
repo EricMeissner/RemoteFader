@@ -47,6 +47,12 @@ class CinemaProcessor(object):
         else:
             return False
 
+    def togglemute(self):
+        if(self.getmute()):
+            self.setmute(0)
+        else:
+            self.setmute(1)
+
     #@abstractmethod
     def getfader(self):
         pass

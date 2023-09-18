@@ -1,7 +1,8 @@
 import os
 import displayio
 import terminalio
-import adafruit_displayio_ssd1306
+from adafruit_displayio_ssd1306 import SSD1306
+from adafruit_st7735r import ST7735R
 from adafruit_display_text import label
 import digitalio
 import rotaryio
@@ -27,7 +28,7 @@ import DCPControl
 
 import Config
 
-VERSION = "1.4.3"
+VERSION = "1.5.0"
 
 #class ProgramState(Enum):
 #    LOADING = 0
@@ -39,6 +40,7 @@ VERSION = "1.4.3"
 #    CONFIRM_CHANGE = 6
 #    CHANGE_MACRO = 7
 #    EDIT_KEYPAD_ENABLE = 8
+#######    LARGE_FONT_SELECT = 9
 
 
 # Types of Cinema Processors supported.
@@ -52,10 +54,6 @@ VERSION = "1.4.3"
 #    DCP100-300 = 6
 
 CPCOUNT = 7
-
-# I2C pins
-SDA = Config.SDA
-SCL = Config.SCL
 
 # Ethernet Stuff
 SUBNET_MASK = Config.SUBNET_MASK
@@ -78,11 +76,6 @@ W5500_RSTn = Config.W5500_RSTn
 # Encoder Sensitivity
 SENSITIVITY = Config.SENSITIVITY
 
-DEVICE_ADDRESS = Config.DEVICE_ADDRESS
-
-DISPLAYWIDTH = Config.DISPLAYWIDTH
-DISPLAYHEIGHT = Config.DISPLAYHEIGHT
-
 # Cinema Processor
 cp = None
 
@@ -93,15 +86,78 @@ new_formatEnable = None
 
 dropped_requests = 0
 MAXDROPS = 10
+
+if hasattr(Config, 'DISPLAY_TYPE'):
+    DISPLAY_TYPE = Config.DISPLAY_TYPE
+else:
+    DISPLAY_TYPE = 1
+
+# i2c stuff
+if hasattr(Config, 'SDA'):
+    SDA = Config.SDA
+if hasattr(Config, 'SCL'):
+    SCL = Config.SCL
+if hasattr(Config, 'DEVICE_ADDRESS'):
+    DEVICE_ADDRESS = Config.DEVICE_ADDRESS
+
+# spi stuff
+if hasattr(Config, 'SPI_CLOCK'):
+    SPI_CLOCK = Config.SPI_CLOCK
+if hasattr(Config, 'SPI_MOSI'):
+    SPI_MOSI = Config.SPI_MOSI
+if hasattr(Config, 'SPI_RESET'):
+    SPI_RESET = Config.SPI_RESET
+if hasattr(Config, 'SPI_CS'):
+    SPI_CS = Config.SPI_CS
+if hasattr(Config, 'SPI_DC'):
+    SPI_DC = Config.SPI_DC
+
+if hasattr(Config, 'DISPLAY2_WIDTH'):
+    DISPLAY2_WIDTH = Config.DISPLAY2_WIDTH
+else:
+    DISPLAY2_WIDTH = 128
+if hasattr(Config, 'DISPLAY2_HEIGHT'):
+    DISPLAY2_HEIGHT = Config.DISPLAY2_HEIGHT
+else:
+    DISPLAY2_HEIGHT = 160
+
+if hasattr(Config, 'TEXT_COLOR') and DISPLAY_TYPE == 2: #Display type 1 is monochrome
+    TEXT_COLOR = Config.TEXT_COLOR
+else:
+    TEXT_COLOR = 0xFFFFFF
+if hasattr(Config, 'DISPLAY_COLOR') and DISPLAY_TYPE == 2:
+    DISPLAY_COLOR = Config.DISPLAY_COLOR
+else:
+    DISPLAY_COLOR = TEXT_COLOR
+if hasattr(Config, 'HEADER_COLOR') and DISPLAY_TYPE == 2:
+    HEADER_COLOR = Config.HEADER_COLOR
+else:
+    HEADER_COLOR = TEXT_COLOR
+
+
+# Keypad stuff
+if hasattr(Config, 'KEYPAD_EXISTS'):
+    KEYPAD_EXISTS = Config.KEYPAD_EXISTS
+else:
+    KEYPAD_EXISTS = False
+if hasattr(Config, 'FORMAT_KEY'):
+    FORMAT_KEY = Config.FORMAT_KEY
+else:
+    FORMAT_KEY = "A"
+if hasattr(Config, 'MUTE_KEY'):
+    MUTE_KEY = Config.MUTE_KEY
+else:
+    MUTE_KEY = False
+if hasattr(Config, 'UNMUTE_KEY'):
+    UNMUTE_KEY = Config.UNMUTE_KEY
+else:
+    UNMUTE_KEY = False
 if hasattr(Config, 'KEYPAD_EXISTS'):
     KEYPAD_EXISTS = Config.KEYPAD_EXISTS
 else:
     KEYPAD_EXISTS = False
 
-if hasattr(Config, 'FORMAT_KEY'):
-    FORMAT_KEY = Config.FORMAT_KEY
-else:
-    FORMAT_KEY = "A"
+large_font = True
 
 # Extract saved data from data.txt
 def getData():
@@ -187,6 +243,8 @@ def editIP():
         pass
     while(encbtn.value):
         new_cpType = math.floor(enc.position*SENSITIVITY) % CPCOUNT
+        #if not macroChangeImplemented(new_cpType):
+        #    new_formatEnable = 0
         refreshDisplay()
     pState = 4
     currentOctet = 0
@@ -280,34 +338,57 @@ def editIP():
 
 # Sets up the OLED display.
 def setUpDisplay():
-    global header, label_1, label_2, label_3, label_4, faderDisplay
+    global header, label_1, label_2, label_3, label_4, faderDisplay, big_label_1, big_label_2
 
     displayio.release_displays()
-    i2c = busio.I2C(SCL, SDA)
-    display_bus = displayio.I2CDisplay(i2c, device_address=DEVICE_ADDRESS)
-    display = adafruit_displayio_ssd1306.SSD1306(display_bus, width=DISPLAYWIDTH, height=DISPLAYHEIGHT)
+    if DISPLAY_TYPE == 1:
+        i2c = busio.I2C(SCL, SDA)
+        display_bus = displayio.I2CDisplay(i2c, device_address=DEVICE_ADDRESS)
+        display = SSD1306(display_bus, width=128, height=64)
+
+    elif DISPLAY_TYPE == 2:
+        spi = busio.SPI(clock=SPI_CLOCK, MOSI=SPI_MOSI)
+        display_bus = displayio.FourWire(spi, command=SPI_DC, chip_select=SPI_CS, reset=SPI_RESET)
+        display = ST7735R(display_bus, width=DISPLAY2_WIDTH, height=DISPLAY2_HEIGHT, bgr = True)
+        display.rotation=90
+    else:
+        print("Invalid DISPLAY_TYPE. This shouldn't happen, see Config.py.")
+
 
     # Make the display context
     group = displayio.Group()
     display.show(group)
     header = label.Label(
-        terminalio.FONT, text="", color=0xFFFFFF, x=2, y=8
+        terminalio.FONT, text="", color=HEADER_COLOR, x=2, y=8
     )
     label_1 = label.Label(
-        terminalio.FONT, text="", color=0xFFFFFF, x=2, y=20
+        terminalio.FONT, text="", color=TEXT_COLOR, x=2, y=20
     )
     label_2 = label.Label(
-        terminalio.FONT, text="", color=0xFFFFFF, x=2, y=32
+        terminalio.FONT, text="", color=TEXT_COLOR, x=2, y=32
     )
     label_3 = label.Label(
-        terminalio.FONT, text="", color=0xFFFFFF, x=2, y=44
+        terminalio.FONT, text="", color=TEXT_COLOR, x=2, y=44
     )
     label_4 = label.Label(
-        terminalio.FONT, text="", color=0xFFFFFF, x=2, y=56
+        terminalio.FONT, text="", color=TEXT_COLOR, x=2, y=56
+    )
+    label_4 = label.Label(
+        terminalio.FONT, text="", color=TEXT_COLOR, x=2, y=56
     )
     faderDisplay = label.Label(
-        terminalio.FONT, text="", color=0xFFFFFF, x=5, y=36, scale=5
+        terminalio.FONT, text="", color=DISPLAY_COLOR, x=5, y=36
     )
+    big_label_1 = label.Label(
+        terminalio.FONT, text="", color=TEXT_COLOR, x=2, y=22, scale=2
+    )
+    big_label_2 = label.Label(
+        terminalio.FONT, text="", color=TEXT_COLOR, x=2, y=46, scale=2
+    )
+    if(DISPLAY_TYPE==1):            #SSD1306
+        faderDisplay.scale=5
+    else:   #DISPLAY_TYPE == 2      #ST7735R
+        faderDisplay.scale=6
     #if(KEYPAD_EXISTS):
     #    faderDisplay.scale = 4
     #    faderDisplay.y = 28
@@ -317,6 +398,8 @@ def setUpDisplay():
     group.append(label_3)
     group.append(label_4)
     group.append(faderDisplay)
+    group.append(big_label_1)
+    group.append(big_label_2)
 
     refreshDisplay()
 
@@ -332,7 +415,7 @@ def refreshDisplay():
 
     #bg_sprite = displayio.TileGrid(color_bitmap, pixel_shader=color_palette, x=0, y=0)
     #splash.append(bg_sprite)
-    global header, label_1, label_2, label_3, label_4, faderDisplay, dropped_requests
+    global header, label_1, label_2, label_3, label_4, faderDisplay, big_label_1, big_label_2, dropped_requests
 
     header_text = ""
     label_1_text = ""
@@ -340,6 +423,8 @@ def refreshDisplay():
     label_3_text = ""
     label_4_text = ""
     faderDisplay_text = ""
+    big_label_1_text = ""
+    big_label_2_text = ""
 
     if(pState == 0): #Loading
         header_text = "Loading..."
@@ -351,10 +436,13 @@ def refreshDisplay():
         label_4_text = f'Enable Format: {str(formatEnable)}'
     elif(pState in (2,7)): #2: Connected state; 7: Change format
         header_text = f'Connected-{getCPTypeFromCode(cpType)}'
+        if(MUTE_KEY):
+            if(cp.getmute()):
+                faderDisplay_text += "M "
         fader = cp.displayfader()
         if(fader):
             dropped_requests = 0
-            faderDisplay_text = f'{fader}'
+            faderDisplay_text += fader
         else:
             # If there is a bad response, keep the old fader text.
             dropped_requests += 1
@@ -362,47 +450,99 @@ def refreshDisplay():
         if(formatEnable):
             macroname = cp.getmacroname() #getmacroname returns False for CPs where this functionality is not yet supported
             if(macroname != False):
-                faderDisplay.scale = 4
-                faderDisplay.y = 28
+                if(DISPLAY_TYPE==1):        #SSD1306
+                    faderDisplay.scale = 4
+                    faderDisplay.y = 28
+                else:   #DISPLAY_TYPE == 2  #ST7735R
+                    faderDisplay.scale = 6
+                    faderDisplay.y = 38
+                    label_4.y = 80
                 if(pState == 2):
                     label_4_text = macroname
                 elif(pState == 7):
                     label_4_text = f'F> {macrolist[newMacroIndex]}'
             else:
-                faderDisplay.scale = 5
-                faderDisplay.y = 36
+                if(DISPLAY_TYPE==1):        #SSD1306
+                    faderDisplay.scale = 5
+                    faderDisplay.y = 36
+                else:   #DISPLAY_TYPE == 2  #ST7735R
+                    faderDisplay.scale = 6
+                    faderDisplay.y = 38
     elif(pState in (3,4,5,6,8)):
-        header_text = f'Edit Setup v{VERSION}'
-        if(pState == 3):
-            label_1_text = f'CP Type: >{getCPTypeFromCode(new_cpType)}'
+        if (large_font and pState != 6):
+            header_text = "Edit: "
+            if(pState == 3):
+                header_text += "CP Type"
+                big_label_1_text = getCPTypeFromCode(new_cpType)
+                label_4_text = f'Version: {VERSION}'
+            elif pState == 4:
+                header_text += "CP IP"
+                if currentOctet == 0:
+                    big_label_1_text = f'>{new_cpIP[0]}.{new_cpIP[1]}.'
+                    big_label_2_text = f'{new_cpIP[2]}.{new_cpIP[3]}'
+                elif currentOctet == 1:
+                    big_label_1_text = f'{new_cpIP[0]}.>{new_cpIP[1]}.'
+                    big_label_2_text = f'{new_cpIP[2]}.{new_cpIP[3]}'
+                elif currentOctet == 2:
+                    big_label_1_text = f'{new_cpIP[0]}.{new_cpIP[1]}.'
+                    big_label_2_text = f'>{new_cpIP[2]}.{new_cpIP[3]}'
+                elif currentOctet == 3:
+                    big_label_1_text = f'{new_cpIP[0]}.{new_cpIP[1]}.'
+                    big_label_2_text = f'{new_cpIP[2]}.>{new_cpIP[3]}'
+            elif pState == 5:
+                header_text += "Fader IP"
+                if currentOctet == 0:
+                    big_label_1_text = f'>{new_ownIP[0]}.{new_ownIP[1]}.'
+                    big_label_2_text = f'{new_ownIP[2]}.{new_ownIP[3]}'
+                elif currentOctet == 1:
+                    big_label_1_text = f'{new_ownIP[0]}.>{new_ownIP[1]}.'
+                    big_label_2_text = f'{new_ownIP[2]}.{new_ownIP[3]}'
+                elif currentOctet == 2:
+                    big_label_1_text = f'{new_ownIP[0]}.{new_ownIP[1]}.'
+                    big_label_2_text = f'>{new_ownIP[2]}.{new_ownIP[3]}'
+                elif currentOctet == 3:
+                    big_label_1_text = f'{new_ownIP[0]}.{new_ownIP[1]}.'
+                    big_label_2_text = f'{new_ownIP[2]}.>{new_ownIP[3]}'
+            elif pState == 8:
+                header_text = "Enable Format Change?"
+                big_label_1_text = str(bool(new_formatEnable))
+                if not macroChangeImplemented(new_cpType):
+                    label_4_text = 'Function unavailable'
+
+
+
         else:
-            label_1_text = f'CP Type: {getCPTypeFromCode(new_cpType)}'
-        label_2_text = 'CPIP:'
-        for i in range(4):
-            if(pState==4 and currentOctet == i):
-                label_2_text += '>'
-            label_2_text += str(new_cpIP[i])
-            if(i!=3):
-                label_2_text += '.'
-        label_3_text = 'FIP: '
-        for i in range(4):
-            if(pState==5 and currentOctet == i):
-                label_3_text += '>'
-            label_3_text += str(new_ownIP[i])
-            if(i!=3):
-                label_3_text += '.'
-        if(pState == 8):
-            label_4_text = f'Enable Format: >{str(bool(new_formatEnable))}'
-        else:
-            label_4_text = f'Enable Format: {str(bool(new_formatEnable))}'
-        if(pState == 6):
-            header_text = 'Confirm? '
-            if(enc.position<0):
-                header_text += 'NO'
-            elif(enc.position>0):
-                header_text += 'YES'
+            header_text = f'Edit Setup v{VERSION}'
+            if(pState == 3):
+                label_1_text = f'CP Type: >{getCPTypeFromCode(new_cpType)}'
             else:
-                header_text += 'NO/YES'
+                label_1_text = f'CP Type: {getCPTypeFromCode(new_cpType)}'
+            label_2_text = 'CPIP:'
+            for i in range(4):
+                if(pState==4 and currentOctet == i):
+                    label_2_text += '>'
+                label_2_text += str(new_cpIP[i])
+                if(i!=3):
+                    label_2_text += '.'
+            label_3_text = 'FIP: '
+            for i in range(4):
+                if(pState==5 and currentOctet == i):
+                    label_3_text += '>'
+                label_3_text += str(new_ownIP[i])
+                if(i!=3):
+                    label_3_text += '.'
+            if(pState == 8):
+                label_4_text = f'Enable Format: >{str(bool(new_formatEnable))}'
+            else:
+                label_4_text = f'Enable Format: {str(bool(new_formatEnable))}'
+            if(pState == 6):
+                header_text = 'Confirm? '
+                if(enc.position<0):
+                    header_text += 'NO'
+                elif(enc.position>0):
+                    header_text += 'YES'
+                else:
+                    header_text += 'NO/YES'
     else:
         header_text = "Program State hasn't been defined yet"
         label_1_text = f'pState = {pState.name}'
@@ -413,6 +553,8 @@ def refreshDisplay():
     label_3.text = label_3_text
     label_4.text = label_4_text
     faderDisplay.text = faderDisplay_text
+    big_label_1.text = big_label_1_text
+    big_label_2.text = big_label_2_text
 
 def constructCinemaProcessorObject():
     global cp, delay
@@ -474,13 +616,19 @@ def getCPTypeFromCode(code):
 def changeMacro():
     global newMacroIndex, pState, enc, encbtn, km, KEYS
     pState = 7
-    newMacroIndex = macrolist.index(cp.getmacroname())
+    newMacroIndex = getMacroIndex()
     refreshDisplay()
     enc.position = int(newMacroIndex/SENSITIVITY)
     while(encbtn.value):
         newMacroIndex = math.floor(enc.position*SENSITIVITY) % len(macrolist)
         refreshDisplay()
-    cp.setmacrobyname(macrolist[newMacroIndex])
+    #cp.setmacrobyname(macrolist[newMacroIndex])
+    if cpType in (1,2):
+        cp.setmacrobyname(macrolist[newMacroIndex])
+    elif cpType == 6:
+        cp.setmacro(newMacroIndex+1)
+    else:
+        print("Macro/preset/input change not supported/implemented. Eric, change the changeMacro() function!")
 
     #Reset encoder position
     enc.position = 0
@@ -494,7 +642,17 @@ def changeMacro():
     refreshDisplay()
 
 def macroChangeImplemented(typecp):
-    return typecp in (1,2)
+    return typecp in (1,2,6)
+
+#
+def getMacroIndex():
+    macroIndex = 0
+    if cpType in (1,2):
+        macroIndex = macrolist.index(cp.getmacroname())
+    elif cpType == 6:
+        macroIndex = cp.getmacro()-1
+    return macroIndex
+
 
 def main():
     global cp, pState, enc, encbtn, km, KEYS
@@ -523,21 +681,28 @@ def main():
             enc.position = 0
             lastPosition = 0
             setUpCinemaProcessor()
-        if formatEnable:
-            if KEYPAD_EXISTS:
-                event = km.events.get()
-                while event:
-                    keyPressed = KEYS[event.key_number]
-                    if event.pressed:
+
+        if KEYPAD_EXISTS:
+            event = km.events.get()
+            while event:
+                keyPressed = KEYS[event.key_number]
+                if event.pressed:
+                    print(keyPressed)
+                    if formatEnable:
                         if keyPressed.isdigit():
                             cp.setmacro(keyPressed)
                         elif (keyPressed == FORMAT_KEY and len(macrolist) and macroChangeImplemented(cpType)):
                             changeMacro()
-                    event = km.events.get()
-            elif (not encbtn.value and len(macrolist) and macroChangeImplemented(cpType)):
-                while(not encbtn.value): #Wait until the button is released to prevent multiple input
-                    pass
-                changeMacro()
+                    if MUTE_KEY:
+                        if keyPressed == MUTE_KEY:
+                            cp.setmute(1)
+                        elif keyPressed == UNMUTE_KEY:
+                            cp.setmute(0)
+                event = km.events.get()
+        elif (not encbtn.value and len(macrolist) and macroChangeImplemented(cpType) and formatEnable):
+            while(not encbtn.value): #Wait until the button is released to prevent multiple input
+                pass
+            changeMacro()
         # If the position of the encoder changed, add/subtract it from the fader (modified by sensitivity)
         # Then adjust the position tracking value accordingly (used to be set back to zero, but
         # the sensitivity value would risk dropping half-ticks and the like.

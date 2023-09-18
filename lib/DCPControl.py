@@ -186,4 +186,84 @@ class DCPControl(CinemaProcessor.CinemaProcessor):
         except Exception as e:
             return False
 
+    # Set Preset by number
+    def setmacro(self, macro):
+        macroID = int(macro)-1 #They index by zero internally, but index by one externally
+        if macroID==-1:
+            macroID = 9 #If someone presses the zero button, change it to select the 10th preset, id 9
+        rawResponse = self.send(f'<?xml version="1.0"?><!--0000{109+len(str(macroID))}--><SET_S RT="C00" ID="0" L1PW="qsc"><ESS O="0x00290000" M="0" S="{str(macroID)}"/></SET_S>')
+        if(not rawResponse or len(rawResponse) == 0):
+            return False
+        index0 = rawResponse.find(' S="')+4
+        #print(f'i0: {index0}')
+        indexF = rawResponse[index0:].find('"')+index0
+        #print(f'iF: {indexF}')
+        return macro
+
+    def setmacrobyname (self, macro):
+        self.setmacro(int(macro.split(" ")[1:]))
+
+    def getmacro(self):
+        attempts = 0
+        index0 = -1
+        while(index0 < 4 and attempts < 5): #Attempt to get the macro id 5 times,
+            attempts += 1
+            rawResponse = self.send('<?xml version="1.0"?><!--0000104--><GET_S RT="C00" ID="0" L1PW="qsc"><EGS O="0x00290000" M="0"/></GET_S>')
+            if(not rawResponse or len(rawResponse) == 0):
+                return False
+            index0 = rawResponse.find(' S="')+4
+        if(index0<4):
+            return False
+
+        #print(f'i0: {index0}')
+        indexF = rawResponse[index0:].find('"')+index0
+        #print(f'iF: {indexF}')
+        #print("raw response: " +rawResponse)
+        #print("response: " +rawResponse[index0:indexF])
+        response = rawResponse[index0:indexF]
+        if response.isdigit():
+            return int(rawResponse[index0:indexF])+1
+        else:
+            return False
+
+    def getmacroname(self):
+        macroID = self.getmacro()
+        if(not macroID):
+            return False
+        macroID = macroID-1
+        hexMacro = (hex(macroID)[2:]).upper()
+        if len(hexMacro)==1:
+            hexMacro= "0"+hexMacro
+        attempts = 0
+        index0 = -1
+        while(index0 < 5 and attempts < 5): #Attempt to get the macro id 5 times,
+            attempts += 1
+            rawResponse = self.send(f'<?xml version="1.0"?><!--0000104--><GET_S RT="C00" ID="0" L1PW="qsc"><EGS O="0x002A00{hexMacro}" M="0"/></GET_S>')
+            if(not rawResponse or len(rawResponse) == 0):
+                return False
+            index0 = rawResponse.find(' ST="')+5
+        if(index0 < 5): #" ST=" not found
+            return ""
+        #print(f'i0: {index0}')
+        indexF = rawResponse[index0:].find('"')+index0
+        #print(f'iF: {indexF}')
+        macroName = rawResponse[index0:indexF]
+        #print("Raw Response: " + rawResponse)
+        #print("Macro name: " + macroName)
+        if(len(macroName) == 0):
+            return "Unnamed Preset " + str(macroID+1)
+        return macroName
+
+    def getmacrolist(self):
+        macroList = (
+            "Preset 1", "Preset 2", "Preset 3", "Preset 4", "Preset 5",
+            "Preset 6", "Preset 7", "Preset 8", "Preset 9", "Preset 10",
+            "Preset 11", "Preset 12", "Preset 13", "Preset 14", "Preset 15",
+            "Preset 16", "Preset 17", "Preset 18", "Preset 19", "Preset 20",
+            "Preset 21", "Preset 22", "Preset 23", "Preset 24", "Preset 25",
+            "Preset 26",  "Preset 27", "Preset 28", "Preset 29", "Preset 30",
+            "Preset 31", "Preset 32"
+        )
+        return macroList
+
 

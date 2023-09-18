@@ -112,7 +112,7 @@ class JSD60Control(CinemaProcessor.CinemaProcessor):
         if(isinstance(fader, int)):
             rawfader = str(fader)
             formattedfader = rawfader[:-2]+'.'+rawfader[-2:-1] #add decimal point 2 spaces over from the right
-            return f' {str(formattedfader)}'
+            return f'{str(formattedfader)}'
         else:
             return False
 

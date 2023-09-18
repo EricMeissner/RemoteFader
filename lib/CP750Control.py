@@ -108,7 +108,7 @@ class CP750Control(CinemaProcessor.CinemaProcessor):
         if(isinstance(fader, int)):
             rawfader = str(fader)
             formattedfader = rawfader[:-1]+'.'+rawfader[-1:] #add decimal point one space over from the right
-            return f' {str(formattedfader)}'
+            return f'{str(formattedfader)}'
         else:
             return False
 
@@ -132,7 +132,11 @@ class CP750Control(CinemaProcessor.CinemaProcessor):
         return self.getmacrolist().index(macroname)
 
     def getmacroname(self):
-        return formatDict.get(self.stripvalue(self.send('cp750.sys.input_mode ?')))
+        macroname = formatDict.get(self.stripvalue(self.send('cp750.sys.input_mode ?')))
+        if macroname:
+            return macroname
+        else:
+            return False
 
     def getmacrolist(self):
         return list(formatDict.values())
