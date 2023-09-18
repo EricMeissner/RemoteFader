@@ -27,7 +27,7 @@ import DCPControl
 
 import Config
 
-VERSION = "1.3.4"
+VERSION = "1.3.5"
 
 #class ProgramState(Enum):
 #    LOADING = 0
@@ -37,6 +37,7 @@ VERSION = "1.3.4"
 #    EDIT_CPIP = 4
 #    EDIT_OWNIP = 5
 #    CONFIRM_CHANGE = 6
+#    CHANGE_MACRO = 7
 
 
 # Types of Cinema Processors supported.
@@ -170,8 +171,8 @@ def editIP():
     while(not encbtn.value):
         pass
     while(encbtn.value):
-            new_cpType = math.floor(enc.position*SENSITIVITY) % CPCOUNT
-            refreshDisplay()
+        new_cpType = math.floor(enc.position*SENSITIVITY) % CPCOUNT
+        refreshDisplay()
 
     pState = 4
     currentOctet = 0
@@ -311,7 +312,7 @@ def refreshDisplay():
         label_1_text = f'CP Type: {getCPTypeFromCode(cpType)}'
         label_2_text = f'CPIP:{cpIP}'
         label_3_text = f'FIP: {eth.pretty_ip(eth.ip_address)}'
-    elif(pState == 2):
+    elif(pState in (2,7)):
         header_text = f'Connected-{getCPTypeFromCode(cpType)}'
         fader = cp.displayfader()
         if(fader):
@@ -322,7 +323,10 @@ def refreshDisplay():
             dropped_requests += 1
             faderDisplay_text = faderDisplay.text
         if(KEYPAD_EXISTS):
-            label_4_text = cp.getmacroname()
+            if(pState == 2):
+                label_4_text = cp.getmacroname()
+            elif(pState == 7):
+                label_4_text = f'M> {macrolist[newMacroIndex]}'
     elif(pState in (3,4,5,6)):
         header_text = f'Edit Setup v{VERSION}'
         if(pState == 3):
@@ -396,8 +400,9 @@ def constructCinemaProcessorObject():
         print("Error: invalid CP type")
 
 def setUpCinemaProcessor():
-    global cp, pState
+    global cp, pState, macrolist
     constructCinemaProcessorObject()
+    macrolist = cp.getmacrolist()
     pState = 1
     refreshDisplay()
     cp.connect()
@@ -432,8 +437,29 @@ def getCPTypeFromCode(code):
     else:
         return 'UNKNOWN'
 
+def changeMacro():
+    global newMacroIndex, pState, enc, encbtn, km, KEYS
+    pState = 7
+    newMacroIndex = macrolist.index(cp.getmacroname())
+    refreshDisplay()
+    enc.position = int(newMacroIndex/SENSITIVITY)
+    while(encbtn.value):
+        newMacroIndex = math.floor(enc.position*SENSITIVITY) % len(macrolist)
+        refreshDisplay()
+    cp.setmacrobyname(macrolist[newMacroIndex])
+
+    #Reset encoder position
+    enc.position = 0
+    #Clear out the button presses in case someone pressed A a few times
+    event = km.events.get()
+    while event:
+        event = km.events.get()
+
+    pState = 2
+    refreshDisplay()
+
 def main():
-    global cp, pState, enc, encbtn
+    global cp, pState, enc, encbtn, km, KEYS
     pState = 0
 
     setUpDisplay()
@@ -454,6 +480,8 @@ def main():
     setUpCinemaProcessor()
     enc.position = 0
     lastPosition = 0
+    #cp.setmacrobyname('Test1')
+
     while 1==1:
         if dropped_requests > MAXDROPS:
             enc.position = 0
@@ -461,10 +489,14 @@ def main():
             setUpCinemaProcessor()
         if KEYPAD_EXISTS:
             event = km.events.get()
-            if event:
-                newmacro = Config.KEYS[event.key_number]
-                if event.pressed and newmacro.isdigit():
-                    cp.setmacro(newmacro)
+            while event:
+                keyPressed = KEYS[event.key_number]
+                if event.pressed:
+                    if keyPressed.isdigit():
+                        cp.setmacro(keyPressed)
+                    elif (keyPressed == 'A'):
+                        changeMacro()
+                event = km.events.get()
         # If the position of the encoder changed, add/subtract it from the fader (modified by sensitivity)
         # Then adjust the position tracking value accordingly (used to be set back to zero, but
         # the sensitivity value would risk dropping half-ticks and the like.

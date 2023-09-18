@@ -105,6 +105,9 @@ class CP850Control(CinemaProcessor.CinemaProcessor):
     def setmacro(self, macro):
         return self.stripvalue(self.send(f'sys.macro_preset {macro}'))
 
+    def setmacrobyname (self, macro):
+        return self.stripvalue(self.send(f'sys.macro_name {macro}'))
+
     def getmacro(self):
         return self.stripvalue(self.send('sys.macro_preset ?'))
 
@@ -112,4 +115,13 @@ class CP850Control(CinemaProcessor.CinemaProcessor):
         macroname = self.stripvalue(self.send('sys.macro_name ?'))
         return macroname
 
+    def getmacrolist(self):
+        # Get the list of macros, put each line into a list, remove the leading 'sys.macros ' in the first line
+        raw_macros = self.send('sys.macros ?').split('\r\n')[1:]
+        # Remove the "#:" prefix on each line, by splitting it into an array with a ":" separator.
+        # The resulting arrays are then joined back. I would normally just take the second element,
+        # but there is a chance that a macro could have a colon ":" in the name!
+        macros = list(map(lambda x:':'.join(x.split(':')[1:]),raw_macros))
+        #print(macros)
+        return macros
 
