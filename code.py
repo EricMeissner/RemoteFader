@@ -28,7 +28,7 @@ import DCPControl
 
 import Config
 
-VERSION = "1.5.0"
+VERSION = "1.5.1"
 
 #class ProgramState(Enum):
 #    LOADING = 0
@@ -40,7 +40,7 @@ VERSION = "1.5.0"
 #    CONFIRM_CHANGE = 6
 #    CHANGE_MACRO = 7
 #    EDIT_KEYPAD_ENABLE = 8
-#######    LARGE_FONT_SELECT = 9
+#    TEST = 9
 
 
 # Types of Cinema Processors supported.
@@ -242,10 +242,16 @@ def editIP():
     while(not encbtn.value):
         pass
     while(encbtn.value):
-        new_cpType = math.floor(enc.position*SENSITIVITY) % CPCOUNT
+        if KEYPAD_EXISTS:   #Include test mode option
+            new_cpType = math.floor(enc.position*SENSITIVITY) % (CPCOUNT+1)
+        else:
+            new_cpType = math.floor(enc.position * SENSITIVITY) % CPCOUNT
         #if not macroChangeImplemented(new_cpType):
         #    new_formatEnable = 0
         refreshDisplay()
+    if new_cpType == CPCOUNT:
+        pState = 9
+        testKeypad()
     pState = 4
     currentOctet = 0
     refreshDisplay()
@@ -543,6 +549,10 @@ def refreshDisplay():
                     header_text += 'YES'
                 else:
                     header_text += 'NO/YES'
+    elif pState == 9:
+        header_text = "TEST KEYPAD"
+        big_label_1_text = testString[:8]
+        big_label_2_text = testString[8:]
     else:
         header_text = "Program State hasn't been defined yet"
         label_1_text = f'pState = {pState.name}'
@@ -611,7 +621,7 @@ def getCPTypeFromCode(code):
     elif(code==6):
         return  'DCP100-300'
     else:
-        return 'UNKNOWN'
+        return 'TEST KEYS'
 
 def changeMacro():
     global newMacroIndex, pState, enc, encbtn, km, KEYS
@@ -653,6 +663,23 @@ def getMacroIndex():
         macroIndex = cp.getmacro()-1
     return macroIndex
 
+def testKeypad():
+    global testString, km
+    testString = ''
+    refreshDisplay()
+    while True:
+        if KEYPAD_EXISTS:
+            event = km.events.get()
+            while event:
+                keyPressed = KEYS[event.key_number]
+                if event.pressed:
+                    testString += keyPressed
+                event = km.events.get()
+            if not encbtn.value:
+                testString = ''
+        else:
+            testString = "Keypad disabled in CONFIG"
+        refreshDisplay()
 
 def main():
     global cp, pState, enc, encbtn, km, KEYS
