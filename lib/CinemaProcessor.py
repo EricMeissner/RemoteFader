@@ -70,6 +70,9 @@ class CinemaProcessor(object):
     def setmacro(self, macro):
         pass
 
+    def setmacrobyname (self, macro):
+        pass
+
     def getmacro(self):
         return -1
 
@@ -78,3 +81,4 @@ class CinemaProcessor(object):
 
     def getmacrolist(self):
         return []
+

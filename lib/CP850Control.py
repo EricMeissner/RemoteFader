@@ -103,7 +103,8 @@ class CP850Control(CinemaProcessor.CinemaProcessor):
             return False
 
     def setmacro(self, macro):
-        return self.stripvalue(self.send(f'sys.macro_preset {macro}'))
+        if(macro.isdigit()):
+            return self.stripvalue(self.send(f'sys.macro_preset {macro}'))
 
     def setmacrobyname (self, macro):
         return self.stripvalue(self.send(f'sys.macro_name {macro}'))

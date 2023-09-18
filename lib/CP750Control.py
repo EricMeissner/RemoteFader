@@ -11,6 +11,7 @@ SOCKET_TIMEOUT=250
 
 # Dolby defined port.
 PORT = 61408
+macrolist = ["dig_1", "dig_2", "dig_3", "dig_4", "analog", "non_sync", "mic"]
 
 class CP750Control(CinemaProcessor.CinemaProcessor):
     def __init__(self, host):
@@ -102,3 +103,23 @@ class CP750Control(CinemaProcessor.CinemaProcessor):
         else:
             return False
 
+    def setmacro(self, macro):
+        if(macro.isdigit()):
+            macro = int(macro)-1
+            macrolist = self.getmacrolist()
+            if (macro > -1 and  macro < len(macrolist)):
+                macroname = self.getmacrolist()[macro]
+                self.setmacrobyname(macroname)
+
+    def setmacrobyname (self, macroname):
+        return self.stripvalue(self.send(f'cp750.sys.input_mode {macroname}'))
+
+    def getmacro(self):
+        macroname = self.getmacroname()
+        return self.getmacrolist().index(macroname)
+
+    def getmacroname(self):
+        return self.stripvalue(self.send('cp750.sys.input_mode ?'))
+
+    def getmacrolist(self):
+        return macrolist
