@@ -11,6 +11,7 @@ import math
 import board
 import busio
 import keypad
+import json
 
 #from enum import Enum
 
@@ -28,7 +29,7 @@ import DCPControl
 
 import Config
 
-VERSION = "1.5.3"
+VERSION = "1.5.4"
 
 #class ProgramState(Enum):
 #    LOADING = 0
@@ -41,6 +42,8 @@ VERSION = "1.5.3"
 #    CHANGE_MACRO = 7
 #    EDIT_KEYPAD_ENABLE = 8
 #    TEST = 9
+#    BROWSE_SAVED_PROFILES = 10
+#    SELECT_EDIT_PROFILE = 11
 
 
 # Types of Cinema Processors supported.
@@ -175,7 +178,7 @@ def getData():
         # Scan data file line by line
         for x in data:
             #determine if the line is defining a variable and what variable it is.
-            #Split the line by whitespace, take the second text string (the value), and remove any quotes
+            #Split the line by whitespace, take the second text string (the value)
             #TODO: Basic validation
             if x.startswith('cpType:'):
                 cpType = int(x.split()[1])
@@ -191,6 +194,18 @@ def getData():
     except Exception as ex:
         pass
 
+def getJSONData():
+    global profiles, current_profile
+    try:
+        with open('data.json', 'r') as file:
+            jsondata = json.load(file)
+            current_profile = jsondata["current_profile"]
+            profiles = jsondata["profiles"]
+            #print(profiles)
+    except Exception as ex:
+        #TODO: Make default blank values'
+        pass
+
 # Save settings data to data.txt
 def saveData():
     #global ownIP,cpIP,cpType,keypadEnable
@@ -203,8 +218,22 @@ def saveData():
     except Exception as ex:
         pass
 
+def saveJSONData():
+    #global ownIP,cpIP,cpType,keypadEnable
+    try:
+        with open('data.json', 'w') as file:
+            data = {
+                "current_profile": current_profile,
+                "profiles": profiles
+            }
+            json.dump(data, file)
+    except Exception as ex:
+        pass
+
 def setupEthernet():
     global eth
+
+    ownIP = profiles[current_profile]["ownIP"]
 
     ethernetRst = digitalio.DigitalInOut(W5500_RSTn)
     ethernetRst.direction = digitalio.Direction.OUTPUT
@@ -225,18 +254,43 @@ def setupEthernet():
     eth.ifconfig = ([IP, SUBNET_MASK, GATEWAY_ADDRESS, DNS_SERVER])
     socket.set_interface(eth)
 
+def manageProfiles():
+    global pState, current_profile, enc
+    pState = 10
+    enc.position = int(current_profile / SENSITIVITY)
+    refreshDisplay()
+    while (not encbtn.value):
+        pass
+    while encbtn.value:
+        current_profile = math.floor(enc.position*SENSITIVITY) % len(profiles)
+        refreshDisplay()
+    pState = 11
+    enc.position = 0
+    refreshDisplay()
+    while (not encbtn.value):
+        pass
+    while (encbtn.value or enc.position == 0):
+        refreshDisplay()
+    if (enc.position < 0):
+        editIP()
+    elif (enc.position > 0):
+        saveJSONData()
+        pState = 0
+        refreshDisplay()
+
+
 # Edit settings
 def editIP():
-    global pState, new_cpIP, new_ownIP, new_cpType, new_formatEnable, cpIP, ownIP, cpType, formatEnable, currentOctet, enc, encbtn
+    global pState, new_cpIP, new_ownIP, new_cpType, new_formatEnable, currentOctet, enc, encbtn, profiles
     pState = 3
     if (new_cpType is None):
-        new_cpType = cpType
+        new_cpType = profiles[current_profile]["cpType"]
     if (new_cpIP is None):
-        new_cpIP = list(map(int, cpIP.split('.')))
+        new_cpIP = list(map(int, profiles[current_profile]["cpIP"].split('.')))
     if (new_ownIP is None):
-        new_ownIP = list(map(int, ownIP.split('.')))
+        new_ownIP = list(map(int, profiles[current_profile]["ownIP"].split('.')))
     if (new_formatEnable is None):
-        new_formatEnable = int(formatEnable)
+        new_formatEnable = int(profiles[current_profile]["formatEnable"])
     enc.position = int(new_cpType/SENSITIVITY)
     refreshDisplay()
     while(not encbtn.value):
@@ -330,11 +384,11 @@ def editIP():
     if(enc.position<0):
         editIP()
     elif(enc.position>0):
-        cpType = new_cpType
-        cpIP = '.'.join(map(str, new_cpIP))
-        ownIP = '.'.join(map(str, new_ownIP))
-        formatEnable = bool(new_formatEnable)
-        saveData()
+        profiles[current_profile]["cpType"] = new_cpType
+        profiles[current_profile]["cpIP"] = '.'.join(map(str, new_cpIP))
+        profiles[current_profile]["ownIP"] = '.'.join(map(str, new_ownIP))
+        profiles[current_profile]["formatEnable"] = bool(new_formatEnable)
+        saveJSONData()
         pState = 0
         refreshDisplay()
     else:
@@ -434,14 +488,26 @@ def refreshDisplay():
 
     if(pState == 0): #Loading
         header_text = "Loading..."
-    elif(pState == 1): #Connecting
-        header_text = "Connecting..."
-        label_1_text = f'CP Type: {getCPTypeFromCode(cpType)}'
-        label_2_text = f'CPIP:{cpIP}'
-        label_3_text = f'FIP: {eth.pretty_ip(eth.ip_address)}'
-        label_4_text = f'Enable Format: {str(formatEnable)}'
+    elif(pState in (1,10,11)): #Connecting, Profile browse, select/edit profile
+        label_1_text = f'CP Type: {getCPTypeFromCode(profiles[current_profile]["cpType"])}'
+        label_2_text = f'CPIP:{profiles[current_profile]["cpIP"]}'
+        label_3_text = f'FIP: {profiles[current_profile]["ownIP"]}'
+        label_4_text = f'Enable Format: {str(profiles[current_profile]["formatEnable"])}'
+        if pState == 1:
+            header_text = "Connecting..."
+        elif pState in (10, 11):
+            header_text = f'Profile {current_profile}'
+            if (pState == 10):
+                header_text += f' v{VERSION}'
+            elif (pState == 11):
+                if (enc.position < 0):
+                    header_text += ' EDIT'
+                elif (enc.position > 0):
+                    header_text += ' LOAD'
+                else:
+                    header_text += ' EDIT/LOAD'
     elif(pState in (2,7)): #2: Connected state; 7: Change format
-        header_text = f'Connected-{getCPTypeFromCode(cpType)}'
+        header_text = f'Connected-{getCPTypeFromCode(profiles[current_profile]["cpType"])}'
         if(MUTE_KEY):
             if(cp.getmute()):
                 faderDisplay_text += "M "
@@ -453,7 +519,7 @@ def refreshDisplay():
             # If there is a bad response, keep the old fader text.
             dropped_requests += 1
             faderDisplay_text = faderDisplay.text
-        if(formatEnable):
+        if(profiles[current_profile]["formatEnable"]):
             macroname = cp.getmacroname() #getmacroname returns False for CPs where this functionality is not yet supported
             if(macroname != False):
                 if(DISPLAY_TYPE==1):        #SSD1306
@@ -464,7 +530,10 @@ def refreshDisplay():
                     faderDisplay.y = 38
                     label_4.y = 80
                 if(pState == 2):
-                    label_4_text = macroname
+                    if macroname == "":
+                        label_4_text = label_4.text
+                    else:
+                        label_4_text = macroname
                 elif(pState == 7):
                     label_4_text = f'F> {macrolist[newMacroIndex]}'
             else:
@@ -475,7 +544,7 @@ def refreshDisplay():
                     faderDisplay.scale = 6
                     faderDisplay.y = 38
     elif(pState in (3,4,5,6,8)):
-        if (large_font and pState != 6):
+        if large_font and pState != 6:
             header_text = "Edit: "
             if(pState == 3):
                 header_text += "CP Type"
@@ -549,13 +618,14 @@ def refreshDisplay():
                     header_text += 'YES'
                 else:
                     header_text += 'NO/YES'
+
     elif pState == 9:
         header_text = "TEST KEYPAD"
         big_label_1_text = testString[:8]
         big_label_2_text = testString[8:]
     else:
         header_text = "Program State hasn't been defined yet"
-        label_1_text = f'pState = {pState.name}'
+        label_1_text = f'pState = {pState}'
 
     header.text = header_text
     label_1.text = label_1_text
@@ -574,6 +644,8 @@ def constructCinemaProcessorObject():
         cp = None
     # Polling rate
     delay=Config.POLLING_DELAY
+    cpType = profiles[current_profile]["cpType"]
+    cpIP = profiles[current_profile]["cpIP"]
     if(cpType==0):
         cp = CP650Control.CP650Control(cpIP)
     elif(cpType==1):
@@ -626,6 +698,7 @@ def getCPTypeFromCode(code):
 def changeMacro():
     global newMacroIndex, pState, enc, encbtn, km, KEYS
     pState = 7
+    cpType = profiles[current_profile]["cpType"]
     newMacroIndex = getMacroIndex()
     refreshDisplay()
     enc.position = int(newMacroIndex/SENSITIVITY)
@@ -635,7 +708,7 @@ def changeMacro():
     #cp.setmacrobyname(macrolist[newMacroIndex])
     if cpType in (1,2):
         cp.setmacrobyname(macrolist[newMacroIndex])
-    elif cpType == 6:
+    elif cpType in (0,6):
         cp.setmacro(newMacroIndex+1)
     else:
         print("Macro/preset/input change not supported/implemented. Eric, change the changeMacro() function!")
@@ -652,11 +725,12 @@ def changeMacro():
     refreshDisplay()
 
 def macroChangeImplemented(typecp):
-    return typecp in (1,2,6)
+    return typecp in (0,1,2,6)
 
 #
 def getMacroIndex():
     macroIndex = 0
+    cpType = profiles[current_profile]["cpType"]
     if cpType in (1,2):
         macroIndex = macrolist.index(cp.getmacroname())
     elif cpType == 6:
@@ -687,7 +761,7 @@ def main():
 
     setUpDisplay()
     # Load settings from data.txt
-    getData()
+    getJSONData()
     if (KEYPAD_EXISTS):
         km = keypad.KeyMatrix(row_pins=Config.ROW_PINS, column_pins=Config.COLUMN_PINS)
         KEYS = Config.KEYS
@@ -698,7 +772,10 @@ def main():
 
     # Enter editIP by holding button on startup
     if(not encbtn.value):
-        editIP()
+        manageProfiles()
+        #editIP()
+    formatEnable = profiles[current_profile]["formatEnable"]
+    cpType = profiles[current_profile]["cpType"]
     setupEthernet()
     setUpCinemaProcessor()
     enc.position = 0
@@ -716,12 +793,12 @@ def main():
                 if event.pressed:
                     print(keyPressed)
                     if formatEnable:
-                        #print(formatEnable)
                         if keyPressed.isdigit():
                             cp.setmacro(keyPressed)
                         elif (keyPressed == FORMAT_KEY and len(macrolist) and macroChangeImplemented(cpType)):
                             changeMacro()
-                        elif keyPressed == MUTE_KEY:
+                    if MUTE_KEY:
+                        if keyPressed == MUTE_KEY:
                             cp.setmute(1)
                         elif keyPressed == UNMUTE_KEY:
                             cp.setmute(0)

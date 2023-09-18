@@ -11,6 +11,7 @@ SOCKET_TIMEOUT=250
 
 # Dolby defined port.
 PORT = 61412
+formatlist = ["Format 01", "Format 04", "Format 05", "Format 10", "Format 11", "Format U1", "Format U2", "Format NS"]
 
 class CP650Control(CinemaProcessor.CinemaProcessor):
     def __init__(self, host):
@@ -97,3 +98,33 @@ class CP650Control(CinemaProcessor.CinemaProcessor):
         else:
             return False
 
+    def setmacro(self, macro):
+        macro = int(macro) - 1
+        return self.stripvalue(self.send(f'format_button={macro}'))
+
+    def setmacrobyname(self, macroname):
+        if macroname in formatlist:
+            return self.setmacro(formatlist.index(macroname)+1)
+        else:
+            print(f'Error: Format name \"{macroname}\" does not exist.')
+
+    def getmacro(self):
+        returnFader = self.send('format_button=?')
+        # ~ print(returnFader)
+        return self.stripvalue(returnFader)
+
+    def getmacroname(self):
+        macro = self.getmacro()
+        try:
+            if macro < len(formatlist):
+                return formatlist[macro]
+            else:
+                print(f'Error: Format index \"{macro}\" out of range.')
+                return ""
+        except Exception as e:
+            print(f'Get macroname error: {e}')
+            return ""
+
+
+    def getmacrolist(self):
+        return formatlist

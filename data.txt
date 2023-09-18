@@ -1,4 +1,0 @@
-cpType: 1
-cpIP: 192.168.1.149
-ownIP: 192.168.1.142
-formatEnable: 1
