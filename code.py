@@ -27,7 +27,7 @@ import DCPControl
 
 import Config
 
-VERSION = "1.4.0"
+VERSION = "1.4.1"
 
 #class ProgramState(Enum):
 #    LOADING = 0

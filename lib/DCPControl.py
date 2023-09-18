@@ -3,8 +3,9 @@
 from adafruit_wiznet5k.adafruit_wiznet5k import WIZNET5K
 import adafruit_wiznet5k.adafruit_wiznet5k_socket as socket
 import CinemaProcessor
+import time
 
-
+ERROR_PREFIX='Error'
 ERROR_SUFFIX='invalid command'
 SOCKET_TIMEOUT=250
 
@@ -18,9 +19,11 @@ class DCPControl(CinemaProcessor.CinemaProcessor):
 
     def getState(self):
         result = self.send('<?xml version="1.0"?><!--0000104--><GET_S RT="C00" ID="0" L1PW="qsc"><EGS O="0x001B0000" M="0"/></GET_S>')
-        if not result or result.endswith(ERROR_SUFFIX):
+        if not result or result.endswith(ERROR_SUFFIX) or result.startswith(ERROR_PREFIX):
+            #print("GetState: disconnected")
             return "disconnected"
         else:
+            #print("GetState: connected")
             return "connected"
 
     def connect(self):
@@ -34,6 +37,7 @@ class DCPControl(CinemaProcessor.CinemaProcessor):
         except Exception as e:
             print("Connect Error: " + str(e))
             return "Error: " + str(e)
+        print("Connect Success!")
         return "connected"
 
     def disconnect(self):
@@ -51,7 +55,7 @@ class DCPControl(CinemaProcessor.CinemaProcessor):
         if self.socket is None:
             self.connect()
             if self.socket is None:
-                return self.getState()
+                return "Error: Socket is None"
         try:
             #print('Command: ' + command)
             self.socket.send(command.encode('UTF-8'))
@@ -165,18 +169,21 @@ class DCPControl(CinemaProcessor.CinemaProcessor):
 
     # Converts db to the ten point scale used by Dolby and JSD cinema processors
     def dbtodolby(self, dbVolume):
-        dbVolume = float(dbVolume)
-        if(dbVolume>10):
-            dbVolume = 10
-        elif(dbVolume<-90):
-            dbVolume = -90
+        try:
+            dbVolume = float(dbVolume)
+            if(dbVolume>10):
+                dbVolume = 10
+            elif(dbVolume<-90):
+                dbVolume = -90
 
-        if (dbVolume>-10):
-            dolby = (dbVolume/3.33)+7
-        else: #dbVolume <= -10
-            dolby = (dbVolume/20)+4.5
-        #round to nearest tenth.
-        dolby = round(dolby*10)/10
-        return str(dolby)
+            if (dbVolume>-10):
+                dolby = (dbVolume/3.33)+7
+            else: #dbVolume <= -10
+                dolby = (dbVolume/20)+4.5
+            #round to nearest tenth.
+            dolby = round(dolby*10)/10
+            return str(dolby)
+        except Exception as e:
+            return False
 
 

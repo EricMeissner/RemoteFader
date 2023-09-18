@@ -7,14 +7,11 @@ SUBNET_MASK = (255, 255, 255, 0)
 GATEWAY_ADDRESS = (192, 168, 0, 1)
 DNS_SERVER = (8, 8, 8, 8)
 
-
-# Cinema Processor IP
-#CP_IP = '192.168.1.149'
-
 # Polling/update delay in seconds
 # A lower delay will make the the fader more responsive, BUT if it is too low
 # the frequent requests to the Cinema Processor can be rejected, causing buggy responses.
 POLLING_DELAY = 0.3
+#POLLING_DELAY = 0.5
 
 # Encoder Sensitivity
 # We had an encoder that incremented twice for one click, so we added this so we could
@@ -49,7 +46,8 @@ DISPLAYHEIGHT = 64
 
 # Key Matrix config
 # This is for implementations with macro buttons.
-KEYPAD_EXISTS = True
+# If you install a keypad, switch KEYPAD_EXISTS to True and check the row/column pins.
+KEYPAD_EXISTS = False
 
 ROW_PINS = (board.GP6, board.GP7, board.GP8, board.GP9)
 COLUMN_PINS = (board.GP10, board.GP11, board.GP12, board.GP13)
