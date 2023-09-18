@@ -27,7 +27,7 @@ import DCPControl
 
 import Config
 
-VERSION = "1.4.2"
+VERSION = "1.4.3"
 
 #class ProgramState(Enum):
 #    LOADING = 0
@@ -89,7 +89,7 @@ cp = None
 new_cpType = None
 new_cpIP = None
 new_ownIP = None
-new_keypadEnable = None
+new_formatEnable = None
 
 dropped_requests = 0
 MAXDROPS = 10
@@ -97,14 +97,21 @@ if hasattr(Config, 'KEYPAD_EXISTS'):
     KEYPAD_EXISTS = Config.KEYPAD_EXISTS
 else:
     KEYPAD_EXISTS = False
+
+if hasattr(Config, 'FORMAT_KEY'):
+    FORMAT_KEY = Config.FORMAT_KEY
+else:
+    FORMAT_KEY = "A"
+
 # Extract saved data from data.txt
 def getData():
-    global ownIP, cpIP, cpType, keypadEnable
+    global ownIP, cpIP, cpType, formatEnable
     #Setting arbitrary defaults, in case the data file is bad
     cpType = 0
     cpIP =  "192.168.1.128"
     ownIP = "192.168.1.149"
-    keypadEnable = KEYPAD_EXISTS
+    #keypadEnable = KEYPAD_EXISTS
+    formatEnable = KEYPAD_EXISTS
     try:
         with open('data.txt', 'r') as file:
             data = file.readlines()
@@ -123,21 +130,20 @@ def getData():
             elif x.startswith('ownIP:'):
                 # after extracting ownIP, split it into a tuple of ints
                 ownIP = x.split()[1]
-            elif x.startswith('keypadEnable:'):
-                keypadEnable = bool(int(x.split()[1]))
+            elif x.startswith('keypadEnable:') or x.startswith('formatEnable'):
+                formatEnable = bool(int(x.split()[1]))
     except Exception as ex:
         pass
 
 # Save settings data to data.txt
 def saveData():
     #global ownIP,cpIP,cpType,keypadEnable
-    print(keypadEnable)
     try:
         with open('data.txt', 'w') as file:
             file.write(f'cpType: {str(cpType)}\n')
             file.write(f'cpIP: {cpIP}\n')
             file.write(f'ownIP: {ownIP}\n')
-            file.write(f'keypadEnable: {str(int(keypadEnable))}\n')
+            file.write(f'formatEnable: {str(int(formatEnable))}\n')
     except Exception as ex:
         pass
 
@@ -163,8 +169,9 @@ def setupEthernet():
     eth.ifconfig = ([IP, SUBNET_MASK, GATEWAY_ADDRESS, DNS_SERVER])
     socket.set_interface(eth)
 
+# Edit settings
 def editIP():
-    global pState, new_cpIP, new_ownIP, new_cpType, new_keypadEnable, cpIP, ownIP, cpType, keypadEnable, currentOctet, enc, encbtn
+    global pState, new_cpIP, new_ownIP, new_cpType, new_formatEnable, cpIP, ownIP, cpType, formatEnable, currentOctet, enc, encbtn
     pState = 3
     if (new_cpType is None):
         new_cpType = cpType
@@ -172,8 +179,8 @@ def editIP():
         new_cpIP = list(map(int, cpIP.split('.')))
     if (new_ownIP is None):
         new_ownIP = list(map(int, ownIP.split('.')))
-    if (new_keypadEnable is None):
-        new_keypadEnable = int(keypadEnable)
+    if (new_formatEnable is None):
+        new_formatEnable = int(formatEnable)
     enc.position = int(new_cpType/SENSITIVITY)
     refreshDisplay()
     while(not encbtn.value):
@@ -185,25 +192,37 @@ def editIP():
     currentOctet = 0
     refreshDisplay()
     # first octet (octet[0]) should only be 10 or 192 for private networks
+    firstOctetChoices = 3
+    oldFirstOctet = new_cpIP[0]
     if(new_cpIP[0] == 10):
         enc.position = 0
     elif(new_cpIP[0] == 192):
         enc.position = int(1/SENSITIVITY)
+    elif(new_cpIP[0] in range(256)):
+        enc.position = int(3/SENSITIVITY)
+        firstOctetChoices = 4
     else:
         print("Invalid IP: Defaulting to 10")
         enc.position = 0
     while(not encbtn.value):
         pass
     while(encbtn.value):
-        p = math.floor(enc.position*SENSITIVITY) % 2
+        p = math.floor(enc.position*SENSITIVITY) % firstOctetChoices
         if(p==0):
             new_cpIP[0] = 10
-        else:
+        elif(p==1):
             new_cpIP[0] = 192
+        elif (p == 2):
+            new_cpIP[0] = "???"
+        elif (p == 3):
+            new_cpIP[0] = oldFirstOctet
         refreshDisplay()
     if(new_cpIP[0] == 192):
         new_cpIP[1] = 168
         currentOctet = 2
+    elif(new_cpIP[0] == "???"): #Custom 1st octet
+        new_cpIP[0] = 0
+        currentOctet = 0
     else:
         currentOctet = 1
     refreshDisplay()
@@ -230,12 +249,12 @@ def editIP():
     currentOctet += 1
     if(KEYPAD_EXISTS):
         pState = 8
-        enc.position = int(new_keypadEnable/SENSITIVITY)
+        enc.position = int(new_formatEnable/SENSITIVITY)
         refreshDisplay()
         while(not encbtn.value):
             pass
         while(encbtn.value):
-            new_keypadEnable = math.floor(enc.position*SENSITIVITY) % 2
+            new_formatEnable = math.floor(enc.position*SENSITIVITY) % 2
             refreshDisplay()
     pState = 6
     enc.position = 0
@@ -250,7 +269,7 @@ def editIP():
         cpType = new_cpType
         cpIP = '.'.join(map(str, new_cpIP))
         ownIP = '.'.join(map(str, new_ownIP))
-        keypadEnable = bool(new_keypadEnable)
+        formatEnable = bool(new_formatEnable)
         saveData()
         pState = 0
         refreshDisplay()
@@ -322,16 +341,15 @@ def refreshDisplay():
     label_4_text = ""
     faderDisplay_text = ""
 
-    if(pState == 0):
+    if(pState == 0): #Loading
         header_text = "Loading..."
-    elif(pState == 1):
+    elif(pState == 1): #Connecting
         header_text = "Connecting..."
         label_1_text = f'CP Type: {getCPTypeFromCode(cpType)}'
         label_2_text = f'CPIP:{cpIP}'
         label_3_text = f'FIP: {eth.pretty_ip(eth.ip_address)}'
-        if(KEYPAD_EXISTS):
-            label_4_text = f'Enable Keypad: {str(keypadEnable)}'
-    elif(pState in (2,7)):
+        label_4_text = f'Enable Format: {str(formatEnable)}'
+    elif(pState in (2,7)): #2: Connected state; 7: Change format
         header_text = f'Connected-{getCPTypeFromCode(cpType)}'
         fader = cp.displayfader()
         if(fader):
@@ -341,7 +359,7 @@ def refreshDisplay():
             # If there is a bad response, keep the old fader text.
             dropped_requests += 1
             faderDisplay_text = faderDisplay.text
-        if(KEYPAD_EXISTS and keypadEnable):
+        if(formatEnable):
             macroname = cp.getmacroname() #getmacroname returns False for CPs where this functionality is not yet supported
             if(macroname != False):
                 faderDisplay.scale = 4
@@ -349,7 +367,7 @@ def refreshDisplay():
                 if(pState == 2):
                     label_4_text = macroname
                 elif(pState == 7):
-                    label_4_text = f'M> {macrolist[newMacroIndex]}'
+                    label_4_text = f'F> {macrolist[newMacroIndex]}'
             else:
                 faderDisplay.scale = 5
                 faderDisplay.y = 36
@@ -373,11 +391,10 @@ def refreshDisplay():
             label_3_text += str(new_ownIP[i])
             if(i!=3):
                 label_3_text += '.'
-        if(KEYPAD_EXISTS):
-            if(pState == 8):
-                label_4_text = f'Enable Keypad: >{str(bool(new_keypadEnable))}'
-            else:
-                label_4_text = f'Enable Keypad: {str(bool(new_keypadEnable))}'
+        if(pState == 8):
+            label_4_text = f'Enable Format: >{str(bool(new_formatEnable))}'
+        else:
+            label_4_text = f'Enable Format: {str(bool(new_formatEnable))}'
         if(pState == 6):
             header_text = 'Confirm? '
             if(enc.position<0):
@@ -468,12 +485,16 @@ def changeMacro():
     #Reset encoder position
     enc.position = 0
     #Clear out the button presses in case someone pressed A a few times
-    event = km.events.get()
-    while event:
+    if(KEYPAD_EXISTS):
         event = km.events.get()
+        while event:
+            event = km.events.get()
 
     pState = 2
     refreshDisplay()
+
+def macroChangeImplemented(typecp):
+    return typecp in (1,2)
 
 def main():
     global cp, pState, enc, encbtn, km, KEYS
@@ -497,22 +518,26 @@ def main():
     setUpCinemaProcessor()
     enc.position = 0
     lastPosition = 0
-
     while 1==1:
         if dropped_requests > MAXDROPS:
             enc.position = 0
             lastPosition = 0
             setUpCinemaProcessor()
-        if KEYPAD_EXISTS and keypadEnable:
-            event = km.events.get()
-            while event:
-                keyPressed = KEYS[event.key_number]
-                if event.pressed:
-                    if keyPressed.isdigit():
-                        cp.setmacro(keyPressed)
-                    elif (keyPressed == 'A' and len(macrolist)):
-                        changeMacro()
+        if formatEnable:
+            if KEYPAD_EXISTS:
                 event = km.events.get()
+                while event:
+                    keyPressed = KEYS[event.key_number]
+                    if event.pressed:
+                        if keyPressed.isdigit():
+                            cp.setmacro(keyPressed)
+                        elif (keyPressed == FORMAT_KEY and len(macrolist) and macroChangeImplemented(cpType)):
+                            changeMacro()
+                    event = km.events.get()
+            elif (not encbtn.value and len(macrolist) and macroChangeImplemented(cpType)):
+                while(not encbtn.value): #Wait until the button is released to prevent multiple input
+                    pass
+                changeMacro()
         # If the position of the encoder changed, add/subtract it from the fader (modified by sensitivity)
         # Then adjust the position tracking value accordingly (used to be set back to zero, but
         # the sensitivity value would risk dropping half-ticks and the like.
