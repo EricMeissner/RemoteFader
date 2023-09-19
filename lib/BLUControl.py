@@ -166,6 +166,8 @@ class BLUControl(CinemaProcessor.CinemaProcessor):
             bluVolume = -280617
         elif dBVolume < -10:
             bluVolume = round(math.e**((dBVolume+401.51)/32.088)-300000)
+        elif dBVolume >= 10:
+            bluVolume = 100000
         else:
             bluVolume = dBVolume*10000
         data = decimalToHex(bluVolume, 32)

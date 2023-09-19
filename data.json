@@ -4,7 +4,7 @@
     {
       "cpType": 7,
       "HiQnetAddress": "000103000113",
-      "ownIP": "192.168.1.145",
+      "ownIP": "192.168.1.151",
       "formatEnable": false,
       "cpIP": "192.168.1.143"
     },
@@ -171,6 +171,18 @@
       "formatEnable": false
     },
     {
+      "cpType": 1,
+      "cpIP": "192.168.1.149",
+      "ownIP": "192.168.1.142",
+      "formatEnable": false
+    },
+    {
+      "cpType": 1,
+      "cpIP": "192.168.1.149",
+      "ownIP": "192.168.1.142",
+      "formatEnable": false
+    },
+	{
       "cpType": 1,
       "cpIP": "192.168.1.149",
       "ownIP": "192.168.1.142",

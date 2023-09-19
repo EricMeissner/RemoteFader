@@ -11,7 +11,7 @@ DNS_SERVER = (8, 8, 8, 8)
 # A lower delay will make the the fader more responsive, BUT if it is too low
 # the frequent requests to the Cinema Processor can be rejected, causing buggy responses.
 #POLLING_DELAY = 0.3
-POLLING_DELAY = 0.5
+POLLING_DELAY = 0.3
 
 # Encoder Sensitivity
 # We had an encoder that incremented twice for one click, so we added this so we could

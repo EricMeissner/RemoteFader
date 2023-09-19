@@ -30,7 +30,7 @@ import BLUControl
 
 import Config
 
-VERSION = "1.7.1"
+VERSION = "1.7.2"
 
 #class ProgramState(Enum):
 #    LOADING = 0
@@ -538,10 +538,11 @@ def refreshDisplay():
         if pState == 1:
             header_text = "Connecting..."
         elif pState in (10, 11):
-            header_text = f'Profile {current_profile}'
+            header_text = f'Profile '
             if (pState == 10):
-                header_text += f' v{VERSION}'
+                header_text += f'>{current_profile} v{VERSION}'
             elif (pState == 11):
+                header_text += f'{current_profile}'
                 if (enc.position < 0):
                     header_text += ' EDIT'
                 elif (enc.position > 0):
@@ -809,7 +810,13 @@ def getDisplayFader():
         currentPosition = enc.position
         positionChanges = currentPosition - lastPosition
         volumeChange = math.floor(positionChanges * SENSITIVITY)
-        return str(round(float(fader)*10 + volumeChange)/10)
+        displayfader = round(float(fader)*10 + volumeChange)/10
+        if displayfader > 10:
+            return "10.0"
+        elif displayfader < 0:
+            return "0.5"
+        else:
+            return str(displayfader)
 
 def getMute():
     return mute
