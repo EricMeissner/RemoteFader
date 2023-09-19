@@ -195,13 +195,11 @@ class BLUControl(CinemaProcessor.CinemaProcessor):
 
     # TODO
     def setmute(self, mute=1):
-        pass
-        #return self.stripvalue(self.send(f'sys.mute {mute}'))
+        return 0
 
     # TODO
     def getmute(self):
         return 0
-        #return self.stripvalue(self.send('sys.mute ?'))
 
     # TODO
     def displayfader(self):
@@ -211,7 +209,7 @@ class BLUControl(CinemaProcessor.CinemaProcessor):
         else:
             return False
 
-        # Converts the 0.0-10.0 scale used by the Dolby and JSD CPs to dB
+    # Converts the 0.0-10.0 scale used by the Dolby and JSD CPs to dB
     def dolbytodb(self, dolbyVolume):
         dolbyVolume = float(dolbyVolume)
         if (dolbyVolume > 10):

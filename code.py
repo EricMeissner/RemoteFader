@@ -30,7 +30,7 @@ import BLUControl
 
 import Config
 
-VERSION = "1.7"
+VERSION = "1.7.1"
 
 #class ProgramState(Enum):
 #    LOADING = 0
@@ -92,9 +92,11 @@ new_formatEnable = None
 new_HiQnetAddress = None
 lastPosition = 0
 fader = 0
+mute = 0
+macro = False
 
 dropped_requests = 0
-MAXDROPS = 10
+MAXDROPS = 15
 
 if hasattr(Config, 'DISPLAY_TYPE'):
     DISPLAY_TYPE = Config.DISPLAY_TYPE
@@ -515,13 +517,6 @@ def setUpDisplay():
 # After you change the program state or any of the displayed variables on the OLEd
 # you'll need to call this to update the OLED to show the changes.
 def refreshDisplay():
-
-    #color_bitmap = displayio.Bitmap(DISPLAYWIDTH, DISPLAYHEIGHT, 1)
-    #color_palette = displayio.Palette(1)
-    #color_palette[0] =  0x000000  # Black
-
-    #bg_sprite = displayio.TileGrid(color_bitmap, pixel_shader=color_palette, x=0, y=0)
-    #splash.append(bg_sprite)
     global header, label_1, label_2, label_3, label_4, faderDisplay, big_label_1, big_label_2
 
     header_text = ""
@@ -556,11 +551,11 @@ def refreshDisplay():
     elif(pState in (2,7)): #2: Connected state; 7: Change format
         header_text = f'Connected-{getCPTypeFromCode(profiles[current_profile]["cpType"])}'
         if(MUTE_KEY):
-            if(cp.getmute()):
+            if(getMute()):
                 faderDisplay_text += "M "
         faderDisplay_text += getDisplayFader()
         if(profiles[current_profile]["formatEnable"]):
-            macroname = cp.getmacroname() #getmacroname returns False for CPs where this functionality is not yet supported
+            macroname = macro #getmacroname returns False for CPs where this functionality is not yet supported
             if(macroname != False):
                 if(DISPLAY_TYPE==1):        #SSD1306
                     faderDisplay.scale = 4
@@ -806,13 +801,21 @@ def testKeypad():
         refreshDisplay()
 
 def getDisplayFader():
-    currentPosition = enc.position
-    positionChanges = currentPosition - lastPosition
-    volumeChange = math.floor(positionChanges * SENSITIVITY)
-    return str(round(float(fader)*10 + volumeChange)/10)
+    global lastPosition
+    if pState == 7:
+        lastPosition = 0
+        return fader
+    else:
+        currentPosition = enc.position
+        positionChanges = currentPosition - lastPosition
+        volumeChange = math.floor(positionChanges * SENSITIVITY)
+        return str(round(float(fader)*10 + volumeChange)/10)
+
+def getMute():
+    return mute
 
 def main():
-    global cp, pState, enc, encbtn, km, KEYS, lastPosition, fader
+    global cp, pState, enc, encbtn, km, KEYS, lastPosition, fader, mute, macro
     pState = 0
 
     setUpDisplay()
@@ -858,8 +861,10 @@ def main():
                             changeMacro()
                     if MUTE_KEY:
                         if keyPressed == MUTE_KEY:
+                            mute = 1
                             cp.setmute(1)
                         elif keyPressed == UNMUTE_KEY:
+                            mute = 0
                             cp.setmute(0)
                 event = km.events.get()
         elif (not encbtn.value and len(macrolist) and macroChangeImplemented(cpType) and formatEnable):
@@ -874,6 +879,7 @@ def main():
             # Then adjust the position tracking value accordingly (used to be set back to zero, but
             # the sensitivity value would risk dropping half-ticks and the like.
             lastPosition = currentPosition
+            mute = cp.getmute()
             if (volumeChange != 0):
                 #time.sleep(0.1)
                 cp.addfader(volumeChange)
@@ -889,7 +895,9 @@ def main():
                 # Don't reset last update to ensure you check again.
                 dropped_requests += 1
                 fader = round(float(fader)*10 + volumeChange)/10
-                time.sleep(0.1)
+            if (profiles[current_profile]["formatEnable"]):
+                macro = cp.getmacroname()
+            lastUpdate = time.monotonic()
         #Update the display with the current value
         refreshDisplay()
     # When the program is terminated, disconnect from the Cinema Processor and clear the displays.

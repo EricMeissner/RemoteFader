@@ -10,8 +10,8 @@ DNS_SERVER = (8, 8, 8, 8)
 # Polling/update delay in seconds
 # A lower delay will make the the fader more responsive, BUT if it is too low
 # the frequent requests to the Cinema Processor can be rejected, causing buggy responses.
-POLLING_DELAY = 0.3
-#POLLING_DELAY = 1
+#POLLING_DELAY = 0.3
+POLLING_DELAY = 0.5
 
 # Encoder Sensitivity
 # We had an encoder that incremented twice for one click, so we added this so we could
@@ -66,7 +66,7 @@ W5500_RSTn = board.GP20
 # Key Matrix config
 # This is for implementations with macro buttons.
 # If you install a keypad, switch KEYPAD_EXISTS to True and check the row/column pins.
-KEYPAD_EXISTS = True
+KEYPAD_EXISTS = False
 
 # SSD1306 wiring
 ROW_PINS = (board.GP6, board.GP7, board.GP8, board.GP9)
