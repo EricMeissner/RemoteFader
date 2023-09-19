@@ -1,5 +1,6 @@
 {
-  "current_profile": 1,
+  "current_profile": 2,
+  "server_ip": "192.168.1.151",
   "profiles": [
     {
       "cpType": 7,
@@ -9,15 +10,15 @@
       "cpIP": "192.168.1.143"
     },
     {
-      "cpType": 1,
-      "cpIP": "192.168.1.149",
+      "cpType": 8,
+      "cpIP": "192.168.1.213",
       "ownIP": "192.168.1.145",
       "formatEnable": false
     },
     {
-      "cpType": 0,
-      "cpIP": "192.168.4.152",
-      "ownIP": "192.168.4.142",
+      "cpType": 8,
+      "cpIP": "10.0.10.2",
+      "ownIP": "10.0.10.5",
       "formatEnable": false
     },
     {
@@ -72,12 +73,6 @@
       "cpType": 0,
       "cpIP": "192.168.4.152",
       "ownIP": "192.168.4.142",
-      "formatEnable": false
-    },
-    {
-      "cpType": 1,
-      "cpIP": "192.168.1.149",
-      "ownIP": "192.168.1.142",
       "formatEnable": false
     },
     {

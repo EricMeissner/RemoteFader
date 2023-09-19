@@ -12,12 +12,18 @@ import board
 import busio
 import keypad
 import json
+import gc
 
 #from enum import Enum
 
 # Network stuff
-from adafruit_wiznet5k.adafruit_wiznet5k import WIZNET5K
+#from adafruit_wiznet5k.adafruit_wiznet5k import WIZNET5K
+from adafruit_wiznet5k.adafruit_wiznet5k import *
+from adafruit_wsgi.wsgi_app import WSGIApp
+import adafruit_wiznet5k.adafruit_wiznet5k_wsgiserver as server
 import adafruit_wiznet5k.adafruit_wiznet5k_socket as socket
+import adafruit_requests as requests
+
 
 import CP650Control
 import CP750Control
@@ -27,10 +33,11 @@ import JSD100Control
 import AP20Control
 import DCPControl
 import BLUControl
+import QSYSControl
 
 import Config
 
-VERSION = "1.7.2"
+VERSION = "1.7.3"
 
 #class ProgramState(Enum):
 #    LOADING = 0
@@ -46,6 +53,8 @@ VERSION = "1.7.2"
 #    BROWSE_SAVED_PROFILES = 10
 #    SELECT_EDIT_PROFILE = 11
 #    EDIT_HIQNET = 12
+#    SERVER_SETUP = 13
+#    EDIT_SERVER_IP = 14
 
 
 # Types of Cinema Processors supported.
@@ -58,8 +67,9 @@ VERSION = "1.7.2"
 #    AP20/24/25 = 5
 #    DCP100-300 = 6
 #    BLU = 7
+#    Q-SYS = 8
 
-CPCOUNT = 8
+CPCOUNT = 9
 
 # Ethernet Stuff
 SUBNET_MASK = Config.SUBNET_MASK
@@ -90,6 +100,7 @@ new_cpIP = None
 new_ownIP = None
 new_formatEnable = None
 new_HiQnetAddress = None
+new_server_ip = None
 lastPosition = 0
 fader = 0
 mute = 0
@@ -206,11 +217,13 @@ def getData():
 
 # Extract saved data from data.json
 def getJSONData():
-    global profiles, current_profile
+    global profiles, current_profile, server_ip, old_profile
     try:
         with open('data.json', 'r') as file:
             jsondata = json.load(file)
-            current_profile = jsondata["current_profile"]
+            old_profile = jsondata["current_profile"]
+            current_profile = old_profile
+            server_ip = jsondata["server_ip"]
             profiles = jsondata["profiles"]
     except Exception as ex:
         #TODO: Make default blank values'
@@ -231,21 +244,24 @@ def saveData():
 
 # Save settings data to data.json
 def saveJSONData():
-    #global ownIP,cpIP,cpType,keypadEnable
+    global current_profile
+    if current_profile == len(profiles):
+        current_profile = old_profile
     try:
         with open('data.json', 'w') as file:
             data = {
                 "current_profile": current_profile,
+                "server_ip": server_ip,
                 "profiles": profiles
             }
             json.dump(data, file)
     except Exception as ex:
         pass
 
-def setupEthernet():
-    global eth
+def setupEthernet(ownIP):
+    global eth, socket
 
-    ownIP = profiles[current_profile]["ownIP"]
+    #ownIP = profiles[current_profile]["ownIP"]
 
     ethernetRst = digitalio.DigitalInOut(W5500_RSTn)
     ethernetRst.direction = digitalio.Direction.OUTPUT
@@ -266,6 +282,109 @@ def setupEthernet():
     eth.ifconfig = ([IP, SUBNET_MASK, GATEWAY_ADDRESS, DNS_SERVER])
     socket.set_interface(eth)
 
+def setupServer(ownIP):
+    global pState
+    pState=0
+    refreshDisplay()
+    setupEthernet(ownIP)
+
+    # Initialize a requests object with a socket and ethernet interface
+    requests.set_socket(socket, eth)
+
+    # Here we create our application, registering the
+    # following functions to be called on specific HTTP GET requests routes
+    web_app = WSGIApp()
+
+
+
+    @web_app.route("/")
+    def root(request):  # pylint: disable=unused-argument
+        print("Root WSGI handler")
+        body = "<ul>"
+        for profile_index in range(len(profiles)):
+            body += f'<li><a href="/edit?id={profile_index}"><b>{profile_index}:</b> {getCPTypeFromCode(profiles[profile_index]["cpType"])} - {profiles[profile_index]["cpIP"]}</li></a>'
+        body += "</ul>"
+        html_string = f'''
+           <!DOCTYPE html>
+           <html lang="en">
+           <head>
+           <meta charset="UTF-8">
+           <meta http-equiv="X-UA-Compatible" content="IE=edge">
+           <meta name="viewport" content="width=device-width, initial-scale=1.0">
+           <title>Fader Settings</title>
+           </head>
+           <body>
+           <H2>Fader Settings</H2>
+           <p><b>Current profile: {current_profile}</b></p>
+           <p><b>Server IP: {server_ip}</b></p>
+           {body}
+           </body>
+           </html>
+           '''
+        # return ("200 OK", [], ["Root document"])
+        return ("200 OK", [], [html_string])
+
+    @web_app.route("/edit")
+    def editProfile(request):  # pylint: disable=unused-argument
+        profile_id = int(request.query_params["id"])
+        print("Edit Profile")
+        HiQ_line = ""
+        if profiles[profile_id]["cpType"] == 7:
+            HiQ_line = f'<b>HiQnet Address:</b> 0x{profiles[profile_id]["HiQnetAddress"]}<br>'
+        html_string2 = f'''
+           <!DOCTYPE html>
+           <html lang="en">
+           <head>
+           <meta charset="UTF-8">
+           <meta http-equiv="X-UA-Compatible" content="IE=edge">
+           <meta name="viewport" content="width=device-width, initial-scale=1.0">
+           <title>Profile Edit</title>
+           </head>
+           <body>
+           <H2>Profile {profile_id}</H2>
+           <form>
+            <label for="cptype">Cinema Processor Type:</label>
+            <select name="cptype" id="cptype">
+              <option value="0" {"selected" if profiles[profile_id]["cpType"] == 0 else ""}>CP650</option>
+              <option value="1" {"selected" if profiles[profile_id]["cpType"] == 1 else ""}>CP750</option>
+              <option value="2" {"selected" if profiles[profile_id]["cpType"] == 2 else ""}>CP850/950</option>
+              <option value="3" {"selected" if profiles[profile_id]["cpType"] == 3 else ""}>JSD60</option>
+              <option value="4" {"selected" if profiles[profile_id]["cpType"] == 4 else ""}>JSD100</option>
+              <option value="5" {"selected" if profiles[profile_id]["cpType"] == 5 else ""}>AP20/24/25</option>
+              <option value="6" {"selected" if profiles[profile_id]["cpType"] == 6 else ""}>DCP100-300</option>
+              <option value="7" {"selected" if profiles[profile_id]["cpType"] == 7 else ""}>BLU</option>
+            </select><br>
+            {HiQ_line}
+            <label for="cpip">Cinema Processor IP:</label>
+            <input type="text" id="cpip" name="cpip" value="{profiles[profile_id]["cpIP"]}"><br>
+            <label for="ownip">Fader IP:</label>
+            <input type="text" id="ownip" name="ownip" value="{profiles[profile_id]["ownIP"]}"><br>
+
+            <b>Format Enabled?:</b> {profiles[profile_id]["formatEnable"]}
+           
+           </form>
+           </body>
+           </html>
+           '''
+        #print(html_string2)
+        # return ("200 OK", [], ["Root document"])
+        return ("200 OK", [], [html_string2])
+
+    # Here we setup our server, passing in our web_app as the application
+    server.set_interface(eth)
+    #print(eth.chip)
+    wsgiServer = server.WSGIServer(80, application=web_app)
+    wsgiServer.start()
+    pState = 14
+    refreshDisplay()
+
+    while True:
+        # Our main loop where we have the server poll for incoming requests
+        wsgiServer.update_poll()
+        # Maintain DHCP lease
+        #eth.maintain_dhcp_lease()
+        # Could do any other background tasks here, like reading sensors
+
 def manageProfiles():
     global pState, current_profile, enc
     pState = 10
@@ -274,7 +393,7 @@ def manageProfiles():
     while (not encbtn.value):
         pass
     while encbtn.value:
-        current_profile = math.floor(enc.position*SENSITIVITY) % len(profiles)
+        current_profile = math.floor(enc.position*SENSITIVITY) % (len(profiles)+1)
         refreshDisplay()
     pState = 11
     enc.position = 0
@@ -283,12 +402,23 @@ def manageProfiles():
         pass
     while (encbtn.value or enc.position == 0):
         refreshDisplay()
-    if (enc.position < 0):
-        editIP()
-    elif (enc.position > 0):
-        saveJSONData()
-        pState = 0
-        refreshDisplay()
+        if math.floor(enc.position * SENSITIVITY) > 3:
+            enc.position = int(3 / SENSITIVITY)
+        if math.floor(enc.position * SENSITIVITY) < -3:
+            enc.position = int(-3 / SENSITIVITY)
+    if current_profile == len(profiles): #Server Startup
+        if (enc.position < 0):
+            editServerIP()
+        elif (enc.position > 0):
+            saveJSONData()
+            setupServer(server_ip)
+    else:
+        if (enc.position < 0):
+            editIP()
+        elif (enc.position > 0):
+            saveJSONData()
+            pState = 0
+            refreshDisplay()
 
 
 # Edit settings
@@ -443,6 +573,75 @@ def editIP():
     else:
         print("This should not be able to happen.")
 
+def editServerIP():
+    global pState, currentOctet, enc, new_server_ip, server_ip
+    pState = 13  # Edit cpType
+    global new_server_ip
+    if (new_server_ip is None):
+        new_server_ip = list(map(int, server_ip.split('.')))
+
+    currentOctet = 0
+    refreshDisplay()
+    # first octet (octet[0]) should only be 10 or 192 for private networks
+    firstOctetChoices = 3
+    oldFirstOctet = new_server_ip[0]
+    if (new_server_ip == 10):
+        enc.position[0] = 0
+    elif (new_server_ip[0] == 192):
+        enc.position = int(1 / SENSITIVITY)
+    elif (new_server_ip[0] in range(256)):
+        enc.position = int(3 / SENSITIVITY)
+        firstOctetChoices = 4
+    else:
+        print("Invalid IP: Defaulting to 10")
+        enc.position = 0
+    refreshDisplay()
+    while (not encbtn.value):
+        pass
+    while (encbtn.value):
+        p = math.floor(enc.position * SENSITIVITY) % firstOctetChoices
+        if (p == 0):
+            new_server_ip[0] = 10
+        elif (p == 1):
+            new_server_ip[0] = 192
+        elif (p == 2):
+            new_server_ip[0] = "???"
+        elif (p == 3):
+            new_server_ip[0] = oldFirstOctet
+        refreshDisplay()
+    if (new_server_ip[0] == 192):
+        new_server_ip[1] = 168
+        currentOctet = 2
+    elif (new_server_ip[0] == "???"):  # Custom 1st octet
+        new_server_ip[0] = 0
+        currentOctet = 0
+    else:
+        currentOctet = 1
+    refreshDisplay()
+    while (currentOctet < 4):
+        enc.position = int(new_server_ip[currentOctet] / SENSITIVITY)
+        while (not encbtn.value):
+            pass
+        while (encbtn.value):
+            new_server_ip[currentOctet] = math.floor(enc.position * SENSITIVITY) % 255
+            refreshDisplay()
+        currentOctet += 1
+        refreshDisplay()
+
+    server_ip = '.'.join(map(str, new_server_ip))
+    saveJSONData()
+    setupServer(server_ip)
+    # while (encbtn.value or enc.position == 0):
+    #     refreshDisplay()
+    # if (enc.position < 0):
+    #     editServerIP()
+    # elif (enc.position > 0):
+    #     server_ip = '.'.join(map(str, new_server_ip))
+    #     saveJSONData()
+    #     setupServer(server_ip)
+    # else:
+    #     print("This should not be able to happen.")
+
 ##########################################################################
 
 # Sets up the OLED display.
@@ -531,24 +730,39 @@ def refreshDisplay():
     if(pState == 0): #Loading
         header_text = "Loading..."
     elif(pState in (1,10,11)): #Connecting, Profile browse, select/edit profile
-        label_1_text = f'CP Type: {getCPTypeFromCode(profiles[current_profile]["cpType"])}'
-        label_2_text = f'CPIP:{profiles[current_profile]["cpIP"]}'
-        label_3_text = f'FIP: {profiles[current_profile]["ownIP"]}'
-        label_4_text = f'Enable Format: {str(profiles[current_profile]["formatEnable"])}'
+        if current_profile < len(profiles):
+            label_1_text = f'CP Type: {getCPTypeFromCode(profiles[current_profile]["cpType"])}'
+            label_2_text = f'CPIP:{profiles[current_profile]["cpIP"]}'
+            label_3_text = f'FIP: {profiles[current_profile]["ownIP"]}'
+            label_4_text = f'Enable Format: {str(profiles[current_profile]["formatEnable"])}'
+        else:
+            label_2_text = f'FIP: {server_ip}'
         if pState == 1:
             header_text = "Connecting..."
         elif pState in (10, 11):
-            header_text = f'Profile '
-            if (pState == 10):
-                header_text += f'>{current_profile} v{VERSION}'
-            elif (pState == 11):
-                header_text += f'{current_profile}'
-                if (enc.position < 0):
-                    header_text += ' EDIT'
-                elif (enc.position > 0):
-                    header_text += ' LOAD'
-                else:
-                    header_text += ' EDIT/LOAD'
+            if current_profile < len(profiles):
+                header_text = f'Profile '
+                if (pState == 10):
+                    header_text += f'>{current_profile} v{VERSION}'
+                elif (pState == 11):
+                    header_text += f'{current_profile}'
+                    if (enc.position < 0):
+                        header_text += ' EDIT IP'
+                    elif (enc.position > 0):
+                        header_text += ' START'
+                    else:
+                        header_text += ' EDIT IP/START'
+            else:
+                header_text = 'Server  '
+                if pState == 10:
+                    header_text += f' v{VERSION}'
+                elif (pState == 11):
+                    if (enc.position < 0):
+                        header_text += ' EDIT'
+                    elif (enc.position > 0):
+                        header_text += ' LOAD'
+                    else:
+                        header_text += ' EDIT/LOAD'
     elif(pState in (2,7)): #2: Connected state; 7: Change format
         header_text = f'Connected-{getCPTypeFromCode(profiles[current_profile]["cpType"])}'
         if(MUTE_KEY):
@@ -579,7 +793,7 @@ def refreshDisplay():
                 else:   #DISPLAY_TYPE == 2  #ST7735R
                     faderDisplay.scale = 6
                     faderDisplay.y = 38
-    elif(pState in (3,4,5,6,8,12)):
+    elif(pState in (3,4,5,6,8,12,13)):
         if (large_font and pState != 6) or pState == 12:
             header_text = "Edit: "
             if(pState == 3):
@@ -627,6 +841,20 @@ def refreshDisplay():
                 else:
                     big_label_1_text = displayHiQ[:6].upper()
                     big_label_2_text = displayHiQ[6:].upper()
+            elif pState == 13:
+                header_text += "SERVER IP"
+                if currentOctet == 0:
+                    big_label_1_text = f'>{new_server_ip[0]}.{new_server_ip[1]}.'
+                    big_label_2_text = f'{new_server_ip[2]}.{new_server_ip[3]}'
+                elif currentOctet == 1:
+                    big_label_1_text = f'{new_server_ip[0]}.>{new_server_ip[1]}.'
+                    big_label_2_text = f'{new_server_ip[2]}.{new_server_ip[3]}'
+                elif currentOctet == 2:
+                    big_label_1_text = f'{new_server_ip[0]}.{new_server_ip[1]}.'
+                    big_label_2_text = f'>{new_server_ip[2]}.{new_server_ip[3]}'
+                elif currentOctet == 3:
+                    big_label_1_text = f'{new_server_ip[0]}.{new_server_ip[1]}.'
+                    big_label_2_text = f'{new_server_ip[2]}.>{new_server_ip[3]}'
 
         else:
             header_text = f'Edit Setup v{VERSION}'
@@ -665,6 +893,9 @@ def refreshDisplay():
         header_text = "TEST KEYPAD"
         big_label_1_text = testString[:8]
         big_label_2_text = testString[8:]
+    elif pState == 14:
+        header_text = "Server On"
+        label_2_text = f"IP: {server_ip}"
     else:
         header_text = "Program State hasn't been defined yet"
         label_1_text = f'pState = {pState}'
@@ -704,6 +935,10 @@ def constructCinemaProcessorObject():
         cp = DCPControl.DCPControl(cpIP)
     elif (cpType == 7):
         cp = BLUControl.BLUControl(cpIP, profiles[current_profile]["HiQnetAddress"])
+    elif (cpType == 8):
+        cp = QSYSControl.QSYSControl(cpIP, "MainFaderGain", None)
+        #cp = QSYSControl.QSYSControl(cpIP, "GainGain", None)
+        #cp = QSYSControl.QSYSControl(cpIP, "GainGain", "GainMute")
     else:
         print("Error: invalid CP type")
 
@@ -738,6 +973,8 @@ def getCPTypeFromCode(code):
         return  'DCP100-300'
     elif (code == 7):
         return 'BLU'
+    elif (code == 8):
+        return 'Q-SYS'
     else:
         return 'TEST KEYS'
 
@@ -773,7 +1010,6 @@ def changeMacro():
 def macroChangeImplemented(typecp):
     return typecp in (0,1,2,6)
 
-#
 def getMacroIndex():
     macroIndex = 0
     cpType = profiles[current_profile]["cpType"]
@@ -824,7 +1060,7 @@ def getMute():
 def main():
     global cp, pState, enc, encbtn, km, KEYS, lastPosition, fader, mute, macro
     pState = 0
-
+    #fader = 0.0
     setUpDisplay()
     # Load settings from data.txt
     getJSONData()
@@ -842,7 +1078,12 @@ def main():
         #editIP()
     formatEnable = profiles[current_profile]["formatEnable"]
     cpType = profiles[current_profile]["cpType"]
-    setupEthernet()
+
+
+    #setupServer(profiles[current_profile]["ownIP"])
+
+
+    setupEthernet(profiles[current_profile]["ownIP"])
     setUpCinemaProcessor()
     enc.position = 0
     lastPosition = 0

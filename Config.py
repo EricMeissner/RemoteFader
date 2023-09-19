@@ -66,7 +66,7 @@ W5500_RSTn = board.GP20
 # Key Matrix config
 # This is for implementations with macro buttons.
 # If you install a keypad, switch KEYPAD_EXISTS to True and check the row/column pins.
-KEYPAD_EXISTS = False
+KEYPAD_EXISTS = True
 
 # SSD1306 wiring
 ROW_PINS = (board.GP6, board.GP7, board.GP8, board.GP9)

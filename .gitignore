@@ -5,3 +5,6 @@ adafruit_display_text
 adafruit_wiznet5k
 .idea
 /lib/adafruit_st7735r.mpy
+/lib/adafruit_wsgi/request.mpy
+/lib/adafruit_wsgi/wsgi_app.mpy
+/lib/adafruit_wsgi
