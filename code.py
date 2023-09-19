@@ -30,7 +30,7 @@ import BLUControl
 
 import Config
 
-VERSION = "1.6"
+VERSION = "1.7"
 
 #class ProgramState(Enum):
 #    LOADING = 0
@@ -90,6 +90,8 @@ new_cpIP = None
 new_ownIP = None
 new_formatEnable = None
 new_HiQnetAddress = None
+lastPosition = 0
+fader = 0
 
 dropped_requests = 0
 MAXDROPS = 10
@@ -520,7 +522,7 @@ def refreshDisplay():
 
     #bg_sprite = displayio.TileGrid(color_bitmap, pixel_shader=color_palette, x=0, y=0)
     #splash.append(bg_sprite)
-    global header, label_1, label_2, label_3, label_4, faderDisplay, big_label_1, big_label_2, dropped_requests
+    global header, label_1, label_2, label_3, label_4, faderDisplay, big_label_1, big_label_2
 
     header_text = ""
     label_1_text = ""
@@ -556,14 +558,7 @@ def refreshDisplay():
         if(MUTE_KEY):
             if(cp.getmute()):
                 faderDisplay_text += "M "
-        fader = cp.displayfader()
-        if(fader):
-            dropped_requests = 0
-            faderDisplay_text += fader
-        else:
-            # If there is a bad response, keep the old fader text.
-            dropped_requests += 1
-            faderDisplay_text = faderDisplay.text
+        faderDisplay_text += getDisplayFader()
         if(profiles[current_profile]["formatEnable"]):
             macroname = cp.getmacroname() #getmacroname returns False for CPs where this functionality is not yet supported
             if(macroname != False):
@@ -810,8 +805,14 @@ def testKeypad():
             testString = "Keypad disabled in CONFIG"
         refreshDisplay()
 
+def getDisplayFader():
+    currentPosition = enc.position
+    positionChanges = currentPosition - lastPosition
+    volumeChange = math.floor(positionChanges * SENSITIVITY)
+    return str(round(float(fader)*10 + volumeChange)/10)
+
 def main():
-    global cp, pState, enc, encbtn, km, KEYS
+    global cp, pState, enc, encbtn, km, KEYS, lastPosition, fader
     pState = 0
 
     setUpDisplay()
@@ -835,6 +836,9 @@ def main():
     setUpCinemaProcessor()
     enc.position = 0
     lastPosition = 0
+    lastUpdate = 0
+    dropped_requests = 0
+    fader = cp.displayfader()
     while 1==1:
         if dropped_requests > MAXDROPS:
             enc.position = 0
@@ -862,21 +866,32 @@ def main():
             while(not encbtn.value): #Wait until the button is released to prevent multiple input
                 pass
             changeMacro()
-        # If the position of the encoder changed, add/subtract it from the fader (modified by sensitivity)
-        # Then adjust the position tracking value accordingly (used to be set back to zero, but
-        # the sensitivity value would risk dropping half-ticks and the like.
         currentPosition = enc.position
-        poitionChanges = currentPosition - lastPosition
-        lastPosition = currentPosition
-        volumeChange = math.floor(poitionChanges*SENSITIVITY)
-        #print(position)
-        if (volumeChange != 0):
-            time.sleep(0.1)
-            cp.addfader(volumeChange)
-            time.sleep(0.1)
+        positionChanges = currentPosition - lastPosition
+        volumeChange = math.floor(positionChanges * SENSITIVITY)
+        if (time.monotonic() - lastUpdate) > delay:
+            # If the position of the encoder changed, add/subtract it from the fader (modified by sensitivity)
+            # Then adjust the position tracking value accordingly (used to be set back to zero, but
+            # the sensitivity value would risk dropping half-ticks and the like.
+            lastPosition = currentPosition
+            if (volumeChange != 0):
+                #time.sleep(0.1)
+                cp.addfader(volumeChange)
+                #time.sleep(0.1)
+            lastPosition = currentPosition
+            newFader = cp.displayfader()
+            if (newFader):
+                dropped_requests = 0
+                lastUpdate = time.monotonic()
+                fader = newFader
+            else:
+                # If there is a bad response, keep the old fader text and increment the drops
+                # Don't reset last update to ensure you check again.
+                dropped_requests += 1
+                fader = round(float(fader)*10 + volumeChange)/10
+                time.sleep(0.1)
         #Update the display with the current value
         refreshDisplay()
-        time.sleep(delay)
     # When the program is terminated, disconnect from the Cinema Processor and clear the displays.
     #cp.disconnect()
 
