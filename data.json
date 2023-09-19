@@ -2,243 +2,184 @@
   "current_profile": 0,
   "profiles": [
     {
+      "cpType": 7,
+      "HiQnetAddress": "000103000113",
+      "ownIP": "192.168.1.142",
+      "formatEnable": false,
+      "cpIP": "192.168.1.143"
+    },
+    {
       "cpType": 1,
       "cpIP": "192.168.1.149",
       "ownIP": "192.168.1.142",
-      "formatEnable": true
+      "formatEnable": false
     },
     {
-      "cpType": 1,
-      "cpIP": "192.168.1.1",
-      "ownIP": "192.168.1.2",
+      "cpType": 0,
+      "cpIP": "192.168.4.152",
+      "ownIP": "192.168.4.142",
       "formatEnable": false
     },
     {
       "cpType": 1,
-      "cpIP": "192.168.1.1",
-      "ownIP": "192.168.1.2",
+      "cpIP": "192.168.1.149",
+      "ownIP": "192.168.1.142",
       "formatEnable": false
     },
     {
       "cpType": 1,
-      "cpIP": "192.168.1.1",
-      "ownIP": "192.168.1.2",
+      "cpIP": "192.168.1.149",
+      "ownIP": "192.168.1.142",
       "formatEnable": false
     },
     {
       "cpType": 1,
-      "cpIP": "192.168.1.1",
-      "ownIP": "192.168.1.2",
+      "cpIP": "192.168.1.149",
+      "ownIP": "192.168.1.142",
       "formatEnable": false
     },
     {
       "cpType": 1,
-      "cpIP": "192.168.1.1",
-      "ownIP": "192.168.1.2",
+      "cpIP": "192.168.1.149",
+      "ownIP": "192.168.1.142",
       "formatEnable": false
     },
     {
       "cpType": 1,
-      "cpIP": "192.168.1.1",
-      "ownIP": "192.168.1.2",
+      "cpIP": "192.168.1.149",
+      "ownIP": "192.168.1.142",
       "formatEnable": false
     },
     {
       "cpType": 1,
-      "cpIP": "192.168.1.1",
-      "ownIP": "192.168.1.2",
+      "cpIP": "192.168.1.149",
+      "ownIP": "192.168.1.142",
       "formatEnable": false
     },
     {
       "cpType": 1,
-      "cpIP": "192.168.1.1",
-      "ownIP": "192.168.1.2",
+      "cpIP": "192.168.1.149",
+      "ownIP": "192.168.1.142",
       "formatEnable": false
     },
     {
       "cpType": 1,
-      "cpIP": "192.168.1.1",
-      "ownIP": "192.168.1.2",
+      "cpIP": "192.168.1.149",
+      "ownIP": "192.168.1.142",
+      "formatEnable": false
+    },
+    {
+      "cpType": 0,
+      "cpIP": "192.168.4.152",
+      "ownIP": "192.168.4.142",
       "formatEnable": false
     },
     {
       "cpType": 1,
-      "cpIP": "192.168.1.1",
-      "ownIP": "192.168.1.2",
+      "cpIP": "192.168.1.149",
+      "ownIP": "192.168.1.142",
       "formatEnable": false
     },
     {
       "cpType": 1,
-      "cpIP": "192.168.1.1",
-      "ownIP": "192.168.1.2",
+      "cpIP": "192.168.1.149",
+      "ownIP": "192.168.1.142",
       "formatEnable": false
     },
     {
       "cpType": 1,
-      "cpIP": "192.168.1.1",
-      "ownIP": "192.168.1.2",
+      "cpIP": "192.168.1.149",
+      "ownIP": "192.168.1.142",
       "formatEnable": false
     },
     {
       "cpType": 1,
-      "cpIP": "192.168.1.1",
-      "ownIP": "192.168.1.2",
+      "cpIP": "192.168.1.149",
+      "ownIP": "192.168.1.142",
       "formatEnable": false
     },
     {
       "cpType": 1,
-      "cpIP": "192.168.1.1",
-      "ownIP": "192.168.1.2",
+      "cpIP": "192.168.1.149",
+      "ownIP": "192.168.1.142",
       "formatEnable": false
     },
     {
       "cpType": 1,
-      "cpIP": "192.168.1.1",
-      "ownIP": "192.168.1.2",
+      "cpIP": "192.168.1.149",
+      "ownIP": "192.168.1.142",
       "formatEnable": false
     },
     {
       "cpType": 1,
-      "cpIP": "192.168.1.1",
-      "ownIP": "192.168.1.2",
+      "cpIP": "192.168.1.149",
+      "ownIP": "192.168.1.142",
       "formatEnable": false
     },
     {
       "cpType": 1,
-      "cpIP": "192.168.1.1",
-      "ownIP": "192.168.1.2",
+      "cpIP": "192.168.1.149",
+      "ownIP": "192.168.1.142",
       "formatEnable": false
     },
     {
       "cpType": 1,
-      "cpIP": "192.168.1.1",
-      "ownIP": "192.168.1.2",
+      "cpIP": "192.168.1.149",
+      "ownIP": "192.168.1.142",
       "formatEnable": false
     },
     {
       "cpType": 1,
-      "cpIP": "192.168.1.1",
-      "ownIP": "192.168.1.2",
+      "cpIP": "192.168.1.149",
+      "ownIP": "192.168.1.142",
       "formatEnable": false
     },
     {
       "cpType": 1,
-      "cpIP": "192.168.1.1",
-      "ownIP": "192.168.1.2",
+      "cpIP": "192.168.1.149",
+      "ownIP": "192.168.1.142",
       "formatEnable": false
     },
     {
       "cpType": 1,
-      "cpIP": "192.168.1.1",
-      "ownIP": "192.168.1.2",
+      "cpIP": "192.168.1.149",
+      "ownIP": "192.168.1.142",
       "formatEnable": false
     },
     {
       "cpType": 1,
-      "cpIP": "192.168.1.1",
-      "ownIP": "192.168.1.2",
+      "cpIP": "192.168.1.149",
+      "ownIP": "192.168.1.142",
       "formatEnable": false
     },
     {
       "cpType": 1,
-      "cpIP": "192.168.1.1",
-      "ownIP": "192.168.1.2",
+      "cpIP": "192.168.1.149",
+      "ownIP": "192.168.1.142",
       "formatEnable": false
     },
     {
       "cpType": 1,
-      "cpIP": "192.168.1.1",
-      "ownIP": "192.168.1.2",
+      "cpIP": "192.168.1.149",
+      "ownIP": "192.168.1.142",
       "formatEnable": false
     },
     {
       "cpType": 1,
-      "cpIP": "192.168.1.1",
-      "ownIP": "192.168.1.2",
+      "cpIP": "192.168.1.149",
+      "ownIP": "192.168.1.142",
       "formatEnable": false
     },
     {
       "cpType": 1,
-      "cpIP": "192.168.1.1",
-      "ownIP": "192.168.1.2",
+      "cpIP": "192.168.1.149",
+      "ownIP": "192.168.1.142",
       "formatEnable": false
     },
     {
       "cpType": 1,
-      "cpIP": "192.168.1.1",
-      "ownIP": "192.168.1.2",
-      "formatEnable": false
-    },
-    {
-      "cpType": 1,
-      "cpIP": "192.168.1.1",
-      "ownIP": "192.168.1.2",
-      "formatEnable": false
-    },
-    {
-      "cpType": 1,
-      "cpIP": "192.168.1.1",
-      "ownIP": "192.168.1.2",
-      "formatEnable": false
-    },
-    {
-      "cpType": 1,
-      "cpIP": "192.168.1.1",
-      "ownIP": "192.168.1.2",
-      "formatEnable": false
-    },
-    {
-      "cpType": 1,
-      "cpIP": "192.168.1.1",
-      "ownIP": "192.168.1.2",
-      "formatEnable": false
-    },
-    {
-      "cpType": 1,
-      "cpIP": "192.168.1.1",
-      "ownIP": "192.168.1.2",
-      "formatEnable": false
-    },
-    {
-      "cpType": 1,
-      "cpIP": "192.168.1.1",
-      "ownIP": "192.168.1.2",
-      "formatEnable": false
-    },
-    {
-      "cpType": 1,
-      "cpIP": "192.168.1.1",
-      "ownIP": "192.168.1.2",
-      "formatEnable": false
-    },
-    {
-      "cpType": 1,
-      "cpIP": "192.168.1.1",
-      "ownIP": "192.168.1.2",
-      "formatEnable": false
-    },
-    {
-      "cpType": 1,
-      "cpIP": "192.168.1.1",
-      "ownIP": "192.168.1.2",
-      "formatEnable": false
-    },
-    {
-      "cpType": 1,
-      "cpIP": "192.168.1.1",
-      "ownIP": "192.168.1.2",
-      "formatEnable": false
-    },
-    {
-      "cpType": 1,
-      "cpIP": "192.168.1.1",
-      "ownIP": "192.168.1.2",
-      "formatEnable": false
-    },
-    {
-      "cpType": 1,
-      "cpIP": "192.168.1.1",
-      "ownIP": "192.168.1.2",
+      "cpIP": "192.168.1.149",
+      "ownIP": "192.168.1.142",
       "formatEnable": false
     }
   ]

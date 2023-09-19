@@ -26,10 +26,11 @@ import JSD60Control
 import JSD100Control
 import AP20Control
 import DCPControl
+import BLUControl
 
 import Config
 
-VERSION = "1.5.4"
+VERSION = "1.6"
 
 #class ProgramState(Enum):
 #    LOADING = 0
@@ -44,6 +45,7 @@ VERSION = "1.5.4"
 #    TEST = 9
 #    BROWSE_SAVED_PROFILES = 10
 #    SELECT_EDIT_PROFILE = 11
+#    EDIT_HIQNET = 12
 
 
 # Types of Cinema Processors supported.
@@ -55,8 +57,9 @@ VERSION = "1.5.4"
 #    JSD100 = 4
 #    AP20/24/25 = 5
 #    DCP100-300 = 6
+#    BLU = 7
 
-CPCOUNT = 7
+CPCOUNT = 8
 
 # Ethernet Stuff
 SUBNET_MASK = Config.SUBNET_MASK
@@ -86,6 +89,7 @@ new_cpType = None
 new_cpIP = None
 new_ownIP = None
 new_formatEnable = None
+new_HiQnetAddress = None
 
 dropped_requests = 0
 MAXDROPS = 10
@@ -127,6 +131,7 @@ else:
 if hasattr(Config, 'TEXT_COLOR') and DISPLAY_TYPE == 2: #Display type 1 is monochrome
     TEXT_COLOR = Config.TEXT_COLOR
 else:
+
     TEXT_COLOR = 0xFFFFFF
 if hasattr(Config, 'DISPLAY_COLOR') and DISPLAY_TYPE == 2:
     DISPLAY_COLOR = Config.DISPLAY_COLOR
@@ -163,6 +168,7 @@ else:
 large_font = True
 
 # Extract saved data from data.txt
+# Obsolete
 def getData():
     global ownIP, cpIP, cpType, formatEnable
     #Setting arbitrary defaults, in case the data file is bad
@@ -194,6 +200,7 @@ def getData():
     except Exception as ex:
         pass
 
+# Extract saved data from data.json
 def getJSONData():
     global profiles, current_profile
     try:
@@ -201,12 +208,12 @@ def getJSONData():
             jsondata = json.load(file)
             current_profile = jsondata["current_profile"]
             profiles = jsondata["profiles"]
-            #print(profiles)
     except Exception as ex:
         #TODO: Make default blank values'
         pass
 
 # Save settings data to data.txt
+# Obsolete
 def saveData():
     #global ownIP,cpIP,cpType,keypadEnable
     try:
@@ -218,6 +225,7 @@ def saveData():
     except Exception as ex:
         pass
 
+# Save settings data to data.json
 def saveJSONData():
     #global ownIP,cpIP,cpType,keypadEnable
     try:
@@ -281,8 +289,8 @@ def manageProfiles():
 
 # Edit settings
 def editIP():
-    global pState, new_cpIP, new_ownIP, new_cpType, new_formatEnable, currentOctet, enc, encbtn, profiles
-    pState = 3
+    global pState, new_cpIP, new_ownIP, new_cpType, new_formatEnable, currentOctet, enc, encbtn, profiles, displayHiQ, new_HiQnetAddress, HiQindex
+    pState = 3  #Edit cpType
     if (new_cpType is None):
         new_cpType = profiles[current_profile]["cpType"]
     if (new_cpIP is None):
@@ -291,6 +299,11 @@ def editIP():
         new_ownIP = list(map(int, profiles[current_profile]["ownIP"].split('.')))
     if (new_formatEnable is None):
         new_formatEnable = int(profiles[current_profile]["formatEnable"])
+    if (new_HiQnetAddress is None):
+        try:
+            new_HiQnetAddress = profiles[current_profile]["HiQnetAddress"]
+        except Exception as e:
+            new_HiQnetAddress = "000000000000"
     enc.position = int(new_cpType/SENSITIVITY)
     refreshDisplay()
     while(not encbtn.value):
@@ -306,6 +319,36 @@ def editIP():
     if new_cpType == CPCOUNT:
         pState = 9
         testKeypad()
+    elif new_cpType == 7:   # BLU
+        pState = 12         # Edit HiQNet Address
+        HiQindex = 0
+        displayHiQ = '>' + new_HiQnetAddress
+        #HiQchar = int(new_HiQnetAddress[0]/SENSITIVITY)
+        refreshDisplay()
+        while (not encbtn.value):
+            pass
+        while (HiQindex < 12):
+            enc.position = int(int("0x" + new_HiQnetAddress[HiQindex]) / SENSITIVITY)
+            while (not encbtn.value):
+                pass
+            while (encbtn.value):
+                HiQchar = hex(math.floor(enc.position * SENSITIVITY) % 16).replace('0x', '')
+                if HiQindex == 0:
+                    displayHiQ = '>' + str(HiQchar) + new_HiQnetAddress[1:]
+                elif HiQindex == 11:
+                    displayHiQ = new_HiQnetAddress[:11] + '>' + str(HiQchar)
+                else:
+                    displayHiQ = new_HiQnetAddress[:HiQindex] + '>' + str(HiQchar) + new_HiQnetAddress[HiQindex+1:]
+                refreshDisplay()
+            if HiQindex == 0:
+                new_HiQnetAddress = HiQchar + new_HiQnetAddress[1:]
+            elif HiQindex == 11:
+                new_HiQnetAddress = new_HiQnetAddress[:11] + HiQchar
+            else:
+                new_HiQnetAddress = new_HiQnetAddress[:HiQindex] + HiQchar + new_HiQnetAddress[HiQindex+1:]
+            HiQindex += 1
+            refreshDisplay()
+
     pState = 4
     currentOctet = 0
     refreshDisplay()
@@ -322,6 +365,7 @@ def editIP():
     else:
         print("Invalid IP: Defaulting to 10")
         enc.position = 0
+    refreshDisplay()
     while(not encbtn.value):
         pass
     while(encbtn.value):
@@ -388,6 +432,7 @@ def editIP():
         profiles[current_profile]["cpIP"] = '.'.join(map(str, new_cpIP))
         profiles[current_profile]["ownIP"] = '.'.join(map(str, new_ownIP))
         profiles[current_profile]["formatEnable"] = bool(new_formatEnable)
+        profiles[current_profile]["HiQnetAddress"] = new_HiQnetAddress
         saveJSONData()
         pState = 0
         refreshDisplay()
@@ -543,8 +588,8 @@ def refreshDisplay():
                 else:   #DISPLAY_TYPE == 2  #ST7735R
                     faderDisplay.scale = 6
                     faderDisplay.y = 38
-    elif(pState in (3,4,5,6,8)):
-        if large_font and pState != 6:
+    elif(pState in (3,4,5,6,8,12)):
+        if (large_font and pState != 6) or pState == 12:
             header_text = "Edit: "
             if(pState == 3):
                 header_text += "CP Type"
@@ -583,8 +628,14 @@ def refreshDisplay():
                 big_label_1_text = str(bool(new_formatEnable))
                 if not macroChangeImplemented(new_cpType):
                     label_4_text = 'Function unavailable'
-
-
+            elif pState == 12:
+                header_text = "HiQNet Address"
+                if HiQindex < 6:
+                    big_label_1_text = displayHiQ[:7].upper()
+                    big_label_2_text = displayHiQ[7:].upper()
+                else:
+                    big_label_1_text = displayHiQ[:6].upper()
+                    big_label_2_text = displayHiQ[6:].upper()
 
         else:
             header_text = f'Edit Setup v{VERSION}'
@@ -660,6 +711,8 @@ def constructCinemaProcessorObject():
         cp = AP20Control.AP20Control(cpIP)
     elif(cpType==6):
         cp = DCPControl.DCPControl(cpIP)
+    elif (cpType == 7):
+        cp = BLUControl.BLUControl(cpIP, profiles[current_profile]["HiQnetAddress"])
     else:
         print("Error: invalid CP type")
 
@@ -692,6 +745,8 @@ def getCPTypeFromCode(code):
         return  'AP20/24/25'
     elif(code==6):
         return  'DCP100-300'
+    elif (code == 7):
+        return 'BLU'
     else:
         return 'TEST KEYS'
 
