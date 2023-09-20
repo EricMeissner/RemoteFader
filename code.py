@@ -37,7 +37,7 @@ import QSYSControl
 
 import Config
 
-VERSION = "1.7.3"
+VERSION = "1.7.4"
 
 #class ProgramState(Enum):
 #    LOADING = 0
@@ -283,7 +283,7 @@ def setupEthernet(ownIP):
     socket.set_interface(eth)
 
 def setupServer(ownIP):
-    global pState
+    global pState, profiles
     pState=0
     refreshDisplay()
     setupEthernet(ownIP)
@@ -353,6 +353,7 @@ def setupServer(ownIP):
               <option value="5" {"selected" if profiles[profile_id]["cpType"] == 5 else ""}>AP20/24/25</option>
               <option value="6" {"selected" if profiles[profile_id]["cpType"] == 6 else ""}>DCP100-300</option>
               <option value="7" {"selected" if profiles[profile_id]["cpType"] == 7 else ""}>BLU</option>
+              <option value="8" {"selected" if profiles[profile_id]["cpType"] == 8 else ""}>Q-SYS</option>
             </select><br>
             {HiQ_line}
             <label for="cpip">Cinema Processor IP:</label>
@@ -369,6 +370,32 @@ def setupServer(ownIP):
         #print(html_string2)
         # return ("200 OK", [], ["Root document"])
         return ("200 OK", [], [html_string2])
+
+    @web_app.route("/save")
+    def saveProfile(request):
+        global profiles
+        profile_id = int(request.query_params["id"])
+        cp_type = int(request.query_params["cptype"])
+        profiles[profile_id]["cpType"] = cp_type
+        saveJSONData()
+        print("Data saved???")
+        html_string = f'''
+                   <!DOCTYPE html>
+                   <html lang="en">
+                   <head>
+                   <meta charset="UTF-8">
+                   <meta http-equiv="X-UA-Compatible" content="IE=edge">
+                   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                   <title>Save profile</title>
+                   </head>
+                   <body>
+                   <H2>Profile {profile_id} Saved!</H2>
+                   
+                   </body>
+                   </html>
+                   '''
+        return ("200 OK", [], [html_string])
+
 
     # Here we setup our server, passing in our web_app as the application
     server.set_interface(eth)
@@ -936,9 +963,15 @@ def constructCinemaProcessorObject():
     elif (cpType == 7):
         cp = BLUControl.BLUControl(cpIP, profiles[current_profile]["HiQnetAddress"])
     elif (cpType == 8):
-        cp = QSYSControl.QSYSControl(cpIP, "MainFaderGain", None)
-        #cp = QSYSControl.QSYSControl(cpIP, "GainGain", None)
-        #cp = QSYSControl.QSYSControl(cpIP, "GainGain", "GainMute")
+        if 'FaderName' in profiles[current_profile]:
+            if 'MuteName' in profiles[current_profile]:
+                cp = QSYSControl.QSYSControl(cpIP, profiles[current_profile]["FaderName"], profiles[current_profile]["MuteName"])
+            else:
+                cp = QSYSControl.QSYSControl(cpIP, profiles[current_profile]["FaderName"], None)
+        else:
+            cp = QSYSControl.QSYSControl(cpIP, "MainFaderGain", None)
+            #cp = QSYSControl.QSYSControl(cpIP, "GainGain", None)
+            #cp = QSYSControl.QSYSControl(cpIP, "GainGain", "GainMute")
     else:
         print("Error: invalid CP type")
 

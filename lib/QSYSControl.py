@@ -15,7 +15,10 @@ class QSYSControl(CinemaProcessor.CinemaProcessor):
     def __init__(self, host, faderName, muteName=None):
         super().__init__(host, PORT)
         self.faderName = faderName
-        self.muteName = muteName
+        if muteName == "":
+            self.muteName = None
+        else:
+            self.muteName = muteName
 
     def getState(self):
         if self.socket is None:
