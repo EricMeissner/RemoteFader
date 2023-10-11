@@ -34,10 +34,11 @@ import AP20Control
 import DCPControl
 import BLUControl
 import QSYSControl
+import OvationControl
 
 import Config
 
-VERSION = "1.7.4"
+VERSION = "1.8.0"
 
 #class ProgramState(Enum):
 #    LOADING = 0
@@ -68,8 +69,9 @@ VERSION = "1.7.4"
 #    DCP100-300 = 6
 #    BLU = 7
 #    Q-SYS = 8
+#    OVATION = 9
 
-CPCOUNT = 9
+CPCOUNT = 10
 
 # Ethernet Stuff
 SUBNET_MASK = Config.SUBNET_MASK
@@ -341,6 +343,9 @@ def setupServer(ownIP):
            <title>Profile Edit</title>
            </head>
            <body>
+           <script>
+            
+           </script>
            <H2>Profile {profile_id}</H2>
            <form>
             <label for="cptype">Cinema Processor Type:</label>
@@ -960,9 +965,9 @@ def constructCinemaProcessorObject():
         cp = AP20Control.AP20Control(cpIP)
     elif(cpType==6):
         cp = DCPControl.DCPControl(cpIP)
-    elif (cpType == 7):
+    elif(cpType == 7):
         cp = BLUControl.BLUControl(cpIP, profiles[current_profile]["HiQnetAddress"])
-    elif (cpType == 8):
+    elif(cpType == 8):
         if 'FaderName' in profiles[current_profile]:
             if 'MuteName' in profiles[current_profile]:
                 cp = QSYSControl.QSYSControl(cpIP, profiles[current_profile]["FaderName"], profiles[current_profile]["MuteName"])
@@ -972,13 +977,15 @@ def constructCinemaProcessorObject():
             cp = QSYSControl.QSYSControl(cpIP, "MainFaderGain", None)
             #cp = QSYSControl.QSYSControl(cpIP, "GainGain", None)
             #cp = QSYSControl.QSYSControl(cpIP, "GainGain", "GainMute")
+    elif(cpType == 9):
+        cp = OvationControl.OvationControl(cpIP)
     else:
         print("Error: invalid CP type")
 
 def setUpCinemaProcessor():
     global cp, pState, macrolist
     constructCinemaProcessorObject()
-    macrolist = cp.getmacrolist()
+    # macrolist = cp.getmacrolist()
     pState = 1
     refreshDisplay()
     cp.connect()
@@ -986,6 +993,7 @@ def setUpCinemaProcessor():
     while cp.getState() != 'connected':
         time.sleep(1) #Consider making this configurable?
         cp.connect()
+    macrolist = cp.getmacrolist()
     pState = 2
     refreshDisplay()
 
@@ -1008,6 +1016,8 @@ def getCPTypeFromCode(code):
         return 'BLU'
     elif (code == 8):
         return 'Q-SYS'
+    elif (code == 9):
+        return 'OVATION'
     else:
         return 'TEST KEYS'
 
@@ -1024,7 +1034,7 @@ def changeMacro():
     #cp.setmacrobyname(macrolist[newMacroIndex])
     if cpType in (1,2):
         cp.setmacrobyname(macrolist[newMacroIndex])
-    elif cpType in (0,6):
+    elif cpType in (0,6,9):
         cp.setmacro(newMacroIndex+1)
     else:
         print("Macro/preset/input change not supported/implemented. Eric, change the changeMacro() function!")
@@ -1041,14 +1051,14 @@ def changeMacro():
     refreshDisplay()
 
 def macroChangeImplemented(typecp):
-    return typecp in (0,1,2,6)
+    return int(typecp) in (0,1,2,6,9)
 
 def getMacroIndex():
     macroIndex = 0
     cpType = profiles[current_profile]["cpType"]
     if cpType in (1,2):
         macroIndex = macrolist.index(cp.getmacroname())
-    elif cpType == 6:
+    elif cpType in (6,9):
         macroIndex = cp.getmacro()-1
     return macroIndex
 
@@ -1076,6 +1086,8 @@ def getDisplayFader():
         lastPosition = 0
         return fader
     else:
+        # if fader==False:
+        #     return fader
         currentPosition = enc.position
         positionChanges = currentPosition - lastPosition
         volumeChange = math.floor(positionChanges * SENSITIVITY)
@@ -1093,7 +1105,7 @@ def getMute():
 def main():
     global cp, pState, enc, encbtn, km, KEYS, lastPosition, fader, mute, macro
     pState = 0
-    #fader = 0.0
+    fader = "0.0"
     setUpDisplay()
     # Load settings from data.txt
     getJSONData()
@@ -1122,7 +1134,9 @@ def main():
     lastPosition = 0
     lastUpdate = 0
     dropped_requests = 0
-    fader = cp.displayfader()
+    newFader = cp.displayfader()
+    if newFader:
+        fader = newFader
     while 1==1:
         if dropped_requests > MAXDROPS:
             enc.position = 0

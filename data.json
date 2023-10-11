@@ -1,11 +1,11 @@
 {
-  "current_profile": 2,
   "server_ip": "192.168.1.151",
+  "current_profile": 3,
   "profiles": [
     {
-      "cpType": 7,
       "HiQnetAddress": "000103000113",
       "ownIP": "192.168.1.151",
+      "cpType": 7,
       "formatEnable": false,
       "cpIP": "192.168.1.143"
     },
@@ -22,10 +22,10 @@
       "formatEnable": false
     },
     {
-      "cpType": 1,
-      "cpIP": "192.168.1.149",
+      "cpType": 9,
+      "cpIP": "192.168.1.136",
       "ownIP": "192.168.1.142",
-      "formatEnable": false
+      "formatEnable": true
     },
     {
       "cpType": 1,
@@ -64,7 +64,7 @@
       "formatEnable": false
     },
     {
-      "cpType": 1,
+      "cpType": 5,
       "cpIP": "192.168.1.149",
       "ownIP": "192.168.1.142",
       "formatEnable": false
@@ -177,7 +177,7 @@
       "ownIP": "192.168.1.142",
       "formatEnable": false
     },
-	{
+    {
       "cpType": 1,
       "cpIP": "192.168.1.149",
       "ownIP": "192.168.1.142",
