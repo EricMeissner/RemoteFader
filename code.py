@@ -38,7 +38,7 @@ import OvationControl
 
 import Config
 
-VERSION = "1.8.0"
+VERSION = "1.8.1"
 
 #class ProgramState(Enum):
 #    LOADING = 0
@@ -181,6 +181,10 @@ if hasattr(Config, 'KEYPAD_EXISTS'):
     KEYPAD_EXISTS = Config.KEYPAD_EXISTS
 else:
     KEYPAD_EXISTS = False
+if hasattr(Config, 'DIM_KEY'):
+    DIM_KEY = Config.DIM_KEY
+else:
+    DIM_KEY = "*"
 
 large_font = True
 
@@ -779,11 +783,11 @@ def refreshDisplay():
                 elif (pState == 11):
                     header_text += f'{current_profile}'
                     if (enc.position < 0):
-                        header_text += ' EDIT IP'
+                        header_text += ' EDIT'
                     elif (enc.position > 0):
-                        header_text += ' START'
+                        header_text += ' LOAD'
                     else:
-                        header_text += ' EDIT IP/START'
+                        header_text += ' EDIT/LOAD'
             else:
                 header_text = 'Server  '
                 if pState == 10:
@@ -792,14 +796,17 @@ def refreshDisplay():
                     if (enc.position < 0):
                         header_text += ' EDIT'
                     elif (enc.position > 0):
-                        header_text += ' LOAD'
+                        header_text += ' START'
                     else:
-                        header_text += ' EDIT/LOAD'
+                        header_text += ' EDIT/START'
     elif(pState in (2,7)): #2: Connected state; 7: Change format
         header_text = f'Connected-{getCPTypeFromCode(profiles[current_profile]["cpType"])}'
+        if (DIM_KEY and profiles[current_profile]["cpType"] == 9):
+            if (cp.getdim()):
+                faderDisplay_text += "D"
         if(MUTE_KEY):
             if(getMute()):
-                faderDisplay_text += "M "
+                faderDisplay_text += "M"
         faderDisplay_text += getDisplayFader()
         if(profiles[current_profile]["formatEnable"]):
             macroname = macro #getmacroname returns False for CPs where this functionality is not yet supported
@@ -1161,6 +1168,10 @@ def main():
                         elif keyPressed == UNMUTE_KEY:
                             mute = 0
                             cp.setmute(0)
+                    if DIM_KEY and profiles[current_profile]["cpType"] == 9:
+                        if keyPressed == DIM_KEY:
+                            cp.toggledim()
+
                 event = km.events.get()
         elif (not encbtn.value and len(macrolist) and macroChangeImplemented(cpType) and formatEnable):
             while(not encbtn.value): #Wait until the button is released to prevent multiple input

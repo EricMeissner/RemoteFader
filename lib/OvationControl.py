@@ -16,7 +16,8 @@ class OvationControl(CinemaProcessor.CinemaProcessor):
     def __init__(self, host):
         super().__init__(host, PORT)
         self.macroList = []
-        self.mute = None
+        self.mute = 0
+        self.dim = 0
         self.fader = "0.0"
         self.current_profile = 0
 
@@ -67,6 +68,16 @@ class OvationControl(CinemaProcessor.CinemaProcessor):
                 self.mute = int(rawResponse[index0:])
             else:
                 self.mute = int(rawResponse[index0:(index0 + indexF)])
+
+        # get dim
+        index0 = rawResponse.find('DIM ')
+        if index0 > -1:
+            index0 += 4
+            indexF = rawResponse[index0:].find('\n')
+            if indexF == -1:
+                self.dim = int(rawResponse[index0:])
+            else:
+                self.dim = int(rawResponse[index0:(index0 + indexF)])
 
         # get current preset
         index0 = rawResponse.find('CURRENT_PROFILE ')
@@ -161,6 +172,15 @@ class OvationControl(CinemaProcessor.CinemaProcessor):
 
     def getmute(self):
         return self.mute
+
+    def setdim(self, dim=1):
+        self.send(f'dim {dim}')
+
+    def toggledim(self):
+        self.send('dim 2')
+
+    def getdim(self):
+        return self.dim
 
     def displayfader(self):
         return str(self.getfader())

@@ -88,3 +88,4 @@ FORMAT_KEY = "A"
 #If MUTE_KEY is not given or = False, there will be no mute function.
 MUTE_KEY = "D"
 UNMUTE_KEY = "C"
+DIM_KEY = "*"
