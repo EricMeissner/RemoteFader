@@ -38,7 +38,7 @@ import OvationControl
 
 import Config
 
-VERSION = "1.8.1"
+VERSION = "1.8.2"
 
 #class ProgramState(Enum):
 #    LOADING = 0

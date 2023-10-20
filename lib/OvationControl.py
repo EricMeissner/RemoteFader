@@ -18,7 +18,7 @@ class OvationControl(CinemaProcessor.CinemaProcessor):
         self.macroList = []
         self.mute = 0
         self.dim = 0
-        self.fader = "0.0"
+        self.fader = None
         self.current_profile = 0
 
     def getState(self):
@@ -158,7 +158,16 @@ class OvationControl(CinemaProcessor.CinemaProcessor):
             return False
 
     def getfader(self):
-        self.send('dvolume_0_10 0')
+        if self.fader is None:
+            self.send('dvolume_0_10 0')
+        else:
+            try:
+                result = self.socket.recv().decode('UTF-8').strip()
+                # print(f'RESPONSE: {result}')
+                self.updateState(result)
+            except Exception as e:
+                print("Error: " + str(e))
+                return False
         return self.fader
 
     def setfader(self, value):
