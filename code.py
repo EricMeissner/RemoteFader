@@ -23,6 +23,7 @@ from adafruit_wsgi.wsgi_app import WSGIApp
 import adafruit_wiznet5k.adafruit_wiznet5k_wsgiserver as server
 import adafruit_wiznet5k.adafruit_wiznet5k_socket as socket
 import adafruit_requests as requests
+# from urllib.parse import unquote
 
 
 import CP650Control
@@ -38,8 +39,9 @@ import OvationControl
 
 import Config
 
-VERSION = "1.8.2"
+VERSION = "1.8.2x"
 
+SERVER_TEST = False
 #class ProgramState(Enum):
 #    LOADING = 0
 #    CONNECTING = 1
@@ -188,39 +190,6 @@ else:
 
 large_font = True
 
-# Extract saved data from data.txt
-# Obsolete
-def getData():
-    global ownIP, cpIP, cpType, formatEnable
-    #Setting arbitrary defaults, in case the data file is bad
-    cpType = 0
-    cpIP =  "192.168.1.128"
-    ownIP = "192.168.1.149"
-    #keypadEnable = KEYPAD_EXISTS
-    formatEnable = KEYPAD_EXISTS
-    try:
-        with open('data.txt', 'r') as file:
-            data = file.readlines()
-
-        # Scan data file line by line
-        for x in data:
-            #determine if the line is defining a variable and what variable it is.
-            #Split the line by whitespace, take the second text string (the value)
-            #TODO: Basic validation
-            if x.startswith('cpType:'):
-                cpType = int(x.split()[1])
-                if (cpType >= CPCOUNT):
-                    cpType = 0
-            elif x.startswith('cpIP:'):
-                cpIP = x.split()[1]
-            elif x.startswith('ownIP:'):
-                # after extracting ownIP, split it into a tuple of ints
-                ownIP = x.split()[1]
-            elif x.startswith('keypadEnable:') or x.startswith('formatEnable'):
-                formatEnable = bool(int(x.split()[1]))
-    except Exception as ex:
-        pass
-
 # Extract saved data from data.json
 def getJSONData():
     global profiles, current_profile, server_ip, old_profile
@@ -233,19 +202,6 @@ def getJSONData():
             profiles = jsondata["profiles"]
     except Exception as ex:
         #TODO: Make default blank values'
-        pass
-
-# Save settings data to data.txt
-# Obsolete
-def saveData():
-    #global ownIP,cpIP,cpType,keypadEnable
-    try:
-        with open('data.txt', 'w') as file:
-            file.write(f'cpType: {str(cpType)}\n')
-            file.write(f'cpIP: {cpIP}\n')
-            file.write(f'ownIP: {ownIP}\n')
-            file.write(f'formatEnable: {str(int(formatEnable))}\n')
-    except Exception as ex:
         pass
 
 # Save settings data to data.json
@@ -308,7 +264,7 @@ def setupServer(ownIP):
         print("Root WSGI handler")
         body = "<ul>"
         for profile_index in range(len(profiles)):
-            body += f'<li><a href="/edit?id={profile_index}"><b>{profile_index}:</b> {getCPTypeFromCode(profiles[profile_index]["cpType"])} - {profiles[profile_index]["cpIP"]}</li></a>'
+            body += f'<li><a href="/edit?profile_id={profile_index}"><b>{profile_index}:</b> {getCPTypeFromCode(profiles[profile_index]["cpType"])} - {profiles[profile_index]["cpIP"]}</li></a>'
         body += "</ul>"
         html_string = f'''
            <!DOCTYPE html>
@@ -332,11 +288,32 @@ def setupServer(ownIP):
 
     @web_app.route("/edit")
     def editProfile(request):  # pylint: disable=unused-argument
-        profile_id = int(request.query_params["id"])
+        print(f'Method = {request.method}')
+        #print(f'Request: {dict(request)}')
+        # print(f'Query Params: {dir(request.query_params)}')
+        # print(request.query_params["id"])
+        # print(f'Request body: {dir(request.body)}')
+        # print(f'QP itmes: {dir(request.query_params.items)}')
+        # print(f'QP values: {dir(request.query_params.values)}')
+        # print(f'QP keys: {request.query_params.keys}')
+        print('________________________')
+
+        profile_id = int(request.query_params["profile_id"])
         print("Edit Profile")
-        HiQ_line = ""
-        if profiles[profile_id]["cpType"] == 7:
-            HiQ_line = f'<b>HiQnet Address:</b> 0x{profiles[profile_id]["HiQnetAddress"]}<br>'
+
+        if 'HiQnetAddress' in profiles[profile_id]:
+            HiQnetAddress = profiles[profile_id]["HiQnetAddress"]
+        else:
+            HiQnetAddress = ""
+        if 'FaderName' in profiles[profile_id]:
+            FaderName = profiles[profile_id]["FaderName"]
+        else:
+            FaderName = "MainFaderGain"
+        if 'MuteName' in profiles[profile_id]:
+            MuteName = profiles[profile_id]["MuteName"]
+        else:
+            MuteName = ""
+
         html_string2 = f'''
            <!DOCTYPE html>
            <html lang="en">
@@ -347,45 +324,98 @@ def setupServer(ownIP):
            <title>Profile Edit</title>
            </head>
            <body>
-           <script>
-            
+           <script type="text/javascript">
+                function cancel() {{
+                    window.location.href ='http://{server_ip}'
+                }}
+                function save() {{
+					let profile_id = encodeURIComponent(document.getElementById("profile_id").value);
+					let cpType = encodeURIComponent(document.getElementById("cpType").value);
+					let HiQnetAddress = encodeURIComponent(document.getElementById("HiQnetAddress").value);
+					let FaderName = encodeURIComponent(document.getElementById("FaderName").value);
+					let MuteName = encodeURIComponent(document.getElementById("MuteName").value);
+					let cpIP = encodeURIComponent(document.getElementById("cpIP").value);
+					let ownIP = encodeURIComponent(document.getElementById("ownIP").value);
+					let formatEnable = encodeURIComponent(document.getElementById("formatEnable").value);
+					//TODO: validation
+					alert('http://{server_ip}/save?&profile_id='+profile_id+'&cpType='+cpType+'&HiQnetAddress='+HiQnetAddress+'&FaderName='+FaderName+'&MuteName='+MuteName+'&cpIP='+cpIP+'&ownIP='+ownIP+'&formatEnable='+formatEnable);
+					window.location.href ='http://{server_ip}/save?&profile_id='+profile_id+'&cpType='+cpType+'&HiQnetAddress='+HiQnetAddress+'&FaderName='+FaderName+'&MuteName='+MuteName+'&cpIP='+cpIP+'&ownIP='+ownIP+'&formatEnable='+formatEnable;
+				}}
            </script>
            <H2>Profile {profile_id}</H2>
-           <form>
-            <label for="cptype">Cinema Processor Type:</label>
-            <select name="cptype" id="cptype">
-              <option value="0" {"selected" if profiles[profile_id]["cpType"] == 0 else ""}>CP650</option>
-              <option value="1" {"selected" if profiles[profile_id]["cpType"] == 1 else ""}>CP750</option>
-              <option value="2" {"selected" if profiles[profile_id]["cpType"] == 2 else ""}>CP850/950</option>
-              <option value="3" {"selected" if profiles[profile_id]["cpType"] == 3 else ""}>JSD60</option>
-              <option value="4" {"selected" if profiles[profile_id]["cpType"] == 4 else ""}>JSD100</option>
-              <option value="5" {"selected" if profiles[profile_id]["cpType"] == 5 else ""}>AP20/24/25</option>
-              <option value="6" {"selected" if profiles[profile_id]["cpType"] == 6 else ""}>DCP100-300</option>
-              <option value="7" {"selected" if profiles[profile_id]["cpType"] == 7 else ""}>BLU</option>
-              <option value="8" {"selected" if profiles[profile_id]["cpType"] == 8 else ""}>Q-SYS</option>
-            </select><br>
-            {HiQ_line}
-            <label for="cpip">Cinema Processor IP:</label>
-            <input type="text" id="cpip" name="cpip" value="{profiles[profile_id]["cpIP"]}"><br>
-            <label for="ownip">Fader IP:</label>
-            <input type="text" id="ownip" name="ownip" value="{profiles[profile_id]["ownIP"]}"><br>
-
-            <b>Format Enabled?:</b> {profiles[profile_id]["formatEnable"]}
            
-           </form>
+            <input type="hidden" id="profile_id" name="profile_id" value="{profile_id}">
+            <div>
+                <label for="cpType">Cinema Processor Type:</label>
+                <select name="cpType" id="cpType">
+                  <option value="0" {"selected" if profiles[profile_id]["cpType"] == 0 else ""}>CP650</option>
+                  <option value="1" {"selected" if profiles[profile_id]["cpType"] == 1 else ""}>CP750</option>
+                  <option value="2" {"selected" if profiles[profile_id]["cpType"] == 2 else ""}>CP850/950</option>
+                  <option value="3" {"selected" if profiles[profile_id]["cpType"] == 3 else ""}>JSD60</option>
+                  <option value="4" {"selected" if profiles[profile_id]["cpType"] == 4 else ""}>JSD100</option>
+                  <option value="5" {"selected" if profiles[profile_id]["cpType"] == 5 else ""}>AP20/24/25</option>
+                  <option value="6" {"selected" if profiles[profile_id]["cpType"] == 6 else ""}>DCP100-300</option>
+                  <option value="7" {"selected" if profiles[profile_id]["cpType"] == 7 else ""}>BLU</option>
+                  <option value="8" {"selected" if profiles[profile_id]["cpType"] == 8 else ""}>Q-SYS</option>
+                  <option value="9" {"selected" if profiles[profile_id]["cpType"] == 9 else ""}>OVATION</option>
+                </select>
+            </div>
+            <div style="display:{"block" if profiles[profile_id]["cpType"] == 7 else "none"}">
+                <label for="HiQnetAddress">HiQnet Address: 0x</label>
+                <input type="text" id="HiQnetAddress" name="HiQnetAddress" value="{HiQnetAddress}">
+            </div>
+            <div style="display:{"block" if profiles[profile_id]["cpType"] == 8 else "none"}">
+                <label for="FaderName">Main Fader Name</label>
+                <input type="text" id="FaderName" name="FaderName" value="{FaderName}">
+            </div>
+            <div style="display:{"block" if profiles[profile_id]["cpType"] == 8 else "none"}">
+                <label for="MuteName"Main Fader Mute Name (optional)</label>
+                <input type="text" id="MuteName" name="MuteName" value="{MuteName}">
+            </div>
+            <div>
+                <label for="cpIP">Cinema Processor IP:</label>
+                <input type="text" id="cpIP" name="cpIP" value="{profiles[profile_id]["cpIP"]}">
+            </div>
+            <div>
+                <label for="ownIP">Fader IP:</label>
+                <input type="text" id="ownIP" name="ownIP" value="{profiles[profile_id]["ownIP"]}"><br>
+            </div>
+            <div>
+                <label for="formatEnable">Format Enabled:</label>
+                <select name="formatEnable" id="formatEnable">
+                  <option value="1" {"selected" if profiles[profile_id]["formatEnable"] == "True" else ""}>True</option>
+                  <option value="0" {"selected" if profiles[profile_id]["formatEnable"] != "True" else ""}>False</option>
+                </select>
+            </div>
+            <button style="background-color: green;" onclick="save()">Save Profile</button>
+            <button style="background-color: red;" onclick="cancel()">Cancel</button>
            </body>
            </html>
            '''
-        #print(html_string2)
-        # return ("200 OK", [], ["Root document"])
+
         return ("200 OK", [], [html_string2])
 
     @web_app.route("/save")
     def saveProfile(request):
         global profiles
-        profile_id = int(request.query_params["id"])
-        cp_type = int(request.query_params["cptype"])
-        profiles[profile_id]["cpType"] = cp_type
+        # profile_id = int(unquote(request.query_params["profile_id"]))
+        # cp_type = int(unquote(request.query_params["cpType"]))
+        # profiles[profile_id]["cpType"] = cp_type
+        # HiQnetAddress = str(unquote(request.query_params["HiQnetAddress"]))
+        # profiles[profile_id]["HiQnetAddress"] = HiQnetAddress
+        # FaderName = str(unquote(request.query_params["FaderName"]))
+        # profiles[profile_id]["FaderName"] = FaderName
+        # MuteName = str(unquote(request.query_params["MuteName"]))
+        # if MuteName == "":
+        #     MuteName = None
+        # profiles[profile_id]["MuteName"] = MuteName
+        # cpIP = str(unquote(request.query_params["cpIP"]))
+        # profiles[profile_id]["cpIP"] = cpIP
+        # ownIP = str(unquote(request.query_params["ownIP"]))
+        # profiles[profile_id]["ownIP"] = ownIP
+        # formatEnable = bool(unquote(request.query_params["formatEnable"]))
+        # profiles[profile_id]["formatEnable"] = formatEnable
+
         saveJSONData()
         print("Data saved???")
         html_string = f'''
@@ -977,7 +1007,10 @@ def constructCinemaProcessorObject():
     elif(cpType == 8):
         if 'FaderName' in profiles[current_profile]:
             if 'MuteName' in profiles[current_profile]:
-                cp = QSYSControl.QSYSControl(cpIP, profiles[current_profile]["FaderName"], profiles[current_profile]["MuteName"])
+                if profiles[current_profile]["MuteName"] == "":
+                    cp = QSYSControl.QSYSControl(cpIP, profiles[current_profile]["FaderName"], None)
+                else:
+                    cp = QSYSControl.QSYSControl(cpIP, profiles[current_profile]["FaderName"], profiles[current_profile]["MuteName"])
             else:
                 cp = QSYSControl.QSYSControl(cpIP, profiles[current_profile]["FaderName"], None)
         else:
@@ -1101,8 +1134,12 @@ def getDisplayFader():
         displayfader = round(float(fader)*10 + volumeChange)/10
         if displayfader > 10:
             return "10.0"
+        elif displayfader <= 0.5 and profiles[current_profile]["cpType"] == 7:
+            #BLU systems have a range of 10dB to -80 dB (0.5 Dolby), whereas Dolby can go as low as -90 dB.
+            #In order to make the BLU jump all the way to 0, we display 0.5 as 0.0.
+            return "0.0"
         elif displayfader < 0:
-            return "0.5"
+            return "0.0"
         else:
             return str(displayfader)
 
@@ -1123,6 +1160,9 @@ def main():
     encbtn.direction = digitalio.Direction.INPUT
     encbtn.pull = digitalio.Pull.UP
     enc = rotaryio.IncrementalEncoder(STEP, DIR)
+
+    if SERVER_TEST:
+        setupServer(server_ip)
 
     # Enter editIP by holding button on startup
     if(not encbtn.value):
