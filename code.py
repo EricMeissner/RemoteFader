@@ -39,7 +39,7 @@ import OvationControl
 
 import Config
 
-VERSION = "1.8.2x"
+VERSION = "1.8.3"
 
 SERVER_TEST = False
 #class ProgramState(Enum):

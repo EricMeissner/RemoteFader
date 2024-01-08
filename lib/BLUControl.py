@@ -67,24 +67,36 @@ class BLUControl(CinemaProcessor.CinemaProcessor):
                 return self.getState()
         try:
             packet = str('02') + self.specialChar(command + self.checksum(command), 0) + str('03')
+
+            #check_sum = self.checksum(command)
+            # print("command:" + command + check_sum)
+            # print("length: " + str(len(command + check_sum)))
+            # print("sp char command: " + self.specialChar(command + check_sum, 0))
+            # print("length: " + str(len(self.specialChar(command + check_sum, 0))))
+            # print("packet: " + packet)
+            # print("packet length: " + str(len(packet)))
+
             self.socket.send(binascii.unhexlify(packet))
             result = str(binascii.hexlify(self.socket.recv())).replace('b\'', '').replace('\'', '')
             result = self.specialChar(result, 1)
             return result
         except Exception as e:
             print("SEND Error: " + str(e))
+            # print("command: " + command + self.checksum(command))
+            # print("packet: " + packet)
+            # print("packet length: " + str(len(packet)))
             return False
 
     def specialChar(self, subMsg, reverse):
-        subs = {'02': '1B82', '03': '1B83', '06': '1B86', '15': '1B95', '1B': '1B9B'}
+        subs = {'02': '1b82', '03': '1b83', '06': '1b86', '15': '1b95', '1b': '1b9b'}
         subAry = [subMsg[i:i+2] for i in range(0, len(subMsg), 2)]  # Break data string into array of twos
         if reverse == 0:
             pos = 0
             for byte in subAry:
                 for key, value in subs.items():
                     if key.lower() == byte.lower():
-                        # print 'found ' + byte + ' at position ' + str(pos)
-                        # print 'replacing with ' + value
+                        # print('found ' + byte + ' at position ' + str(pos))
+                        # print('replacing with ' + value)
                         subAry[pos] = value
                 pos += 1
 
@@ -122,7 +134,12 @@ class BLUControl(CinemaProcessor.CinemaProcessor):
             checksum ^= byte
         #print("checksum calculated: " + str(hex(checksum)).replace('0x', ''))
         #print('Checksum: ' + str(hex(checksum)))
-        return str(hex(checksum)).replace('0x', '')
+
+        ret_checksum = str(hex(checksum)).replace('0x', '')
+        # add leading  zero, if needed.
+        if len(ret_checksum) == 1:
+            ret_checksum = '0'+ ret_checksum
+        return ret_checksum
 
     # processing the response is sort of specific to the function in question, so I do not use this.
     # In retrospect, it seems unnecessary to have this as a shared function.
@@ -155,13 +172,13 @@ class BLUControl(CinemaProcessor.CinemaProcessor):
         else:
             return False
 
-    # TODO
+    # TODO?
     def setfader(self, value):
         messageType = '88'
         # calculate data from value)
-        #print("set value: " + str(value))
+        # print("set Dolby volume: " + str(value))
         dBVolume = self.dolbytodb(value)
-        #print("set dBVolume: " + str(dBVolume))
+        # print("set dBVolume: " + str(dBVolume))
         if dBVolume <= -84:
             bluVolume = -280617
         elif dBVolume < -10:
@@ -170,7 +187,9 @@ class BLUControl(CinemaProcessor.CinemaProcessor):
             bluVolume = 100000
         else:
             bluVolume = dBVolume*10000
+        # print("set BLU volume: " + str(bluVolume))
         data = decimalToHex(bluVolume, 32)
+        # print("set BLU volume (hex): " + str(data))
         packet = messageType + self.HiQnetAddress + FADERID + data
         # print("get packet: " + packet)
         self.send(packet)

@@ -1,13 +1,13 @@
 {
   "server_ip": "192.168.1.151",
-  "current_profile": 3,
+  "current_profile": 0,
   "profiles": [
     {
-      "HiQnetAddress": "000103000113",
-      "ownIP": "192.168.1.151",
+      "HiQnetAddress": "319403000113",
+      "ownIP": "192.168.2.151",
       "cpType": 7,
       "formatEnable": false,
-      "cpIP": "192.168.1.143"
+      "cpIP": "192.168.2.171"
     },
     {
       "cpType": 8,
